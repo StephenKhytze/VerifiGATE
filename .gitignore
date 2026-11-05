@@ -1,0 +1,39 @@
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+*.swp
+
+# ---- Secrets and local config (never commit) ----
+.env
+.env.*
+!.env.example
+start.ps1
+*.local.ps1
+start-ocr.txt
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# ---- Privacy: ID images and test results never go in git ----
+ocr-test-images/
+test-images/
+captures/
+debug-frames/
+ocr-results*.csv
+
+# ---- Logs ----
+*.log
+
+# ---- Model files, if you ever keep them inside the repo ----
+*.pdparams
+*.pdmodel
+*.pdiparams
