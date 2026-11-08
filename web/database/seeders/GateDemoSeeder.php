@@ -34,15 +34,18 @@ class GateDemoSeeder extends Seeder
             'year_or_grade' => 11, 'name' => 'Sun']);
         $c1 = Section::create(['school_year_id' => $sy->id, 'level' => 'college',
             'program_id' => $bsit->id, 'year_or_grade' => 1, 'name' => '1A']);
+        $c4 = Section::create(['school_year_id' => $sy->id, 'level' => 'college',
+            'program_id' => $bsit->id, 'year_or_grade' => 4, 'name' => '1']);
 
         // [number, last, first, middle, suffix, section]   ALL FAKE
         $students = [
-            ['H24-9001', 'DE GUZMAN',     'JUAN MIGUEL', 'C', null,  $g10],
+            ['H24-0137', 'DE GUZMAN',     'JUAN MIGUEL', 'C', null,  $g10],
             ['H24-9002', 'DE LOS SANTOS', 'MARIA ALBA',  'A', null,  $g10],
             ['H24-9003', 'NUÑEZ',         'JOSE RAFAEL', 'P', 'JR.', $g10],
             ['H24-9004', 'PEÑA',          'ANA LUISA',   'B', null,  $g11],
             ['C24-9001', 'CRUZ',          'DANIEL ANDREW','L', null, $c1],
             ['C24-9002', 'DELA CRUZ',     'SOFIA MAE',   'T', null,  $c1],
+            ['C23-0270', 'GARROVILLO',     'STEPHEN KHYTZE',   'M', null,  $c4],
         ];
         foreach ($students as [$no, $last, $first, $mid, $suf, $sec]) {
             Student::create(['student_number' => $no, 'last_name' => $last,
@@ -58,7 +61,7 @@ class GateDemoSeeder extends Seeder
 
         $g = Guardian::create(['last_name' => 'DE GUZMAN', 'first_name' => 'ELENA', 'middle_name' => 'R']);
         PickupAuthorization::create(['guardian_id' => $g->id,
-            'student_id' => Student::where('student_number', 'H24-9001')->value('id'),
+            'student_id' => Student::where('student_number', 'H24-0137')->value('id'),
             'relationship' => 'Mother']);
 
         foreach (['Civilian', 'P.E. Uniform', 'Department Shirt'] as $n) {
