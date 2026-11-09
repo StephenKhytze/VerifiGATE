@@ -21,10 +21,13 @@ CROP_PORT = int(os.environ.get("CROP_PORT", "8003"))
 
 # All of these are starting values: calibrate on your camera and mounting.
 STEADY_FRAMES = 5
-MOVE_TOL = 0.02
+MOVE_TOL = 0.03
 MIN_AREA, MAX_AREA = 0.05, 0.80
-ASPECT = (1.35, 1.80)
+ASPECT = (1.4, 1.75)
 MIN_SHARPNESS = float(os.environ.get("MIN_SHARPNESS", "60"))
+CARD_PAD = float(os.environ.get("CARD_PAD", "0.05"))
+MIN_FILL = 0.85
+MISS_TOLERANCE = 8
 SOFT_SEND_AFTER = 3.0
 CLEAR_SECONDS = 1.5
 RETRY_TIMEOUT = 4.0
@@ -98,24 +101,24 @@ def find_card(frame):
     scale = 640 / max(h, w)
     small = cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     gray = cv2.GaussianBlur(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY), (5, 5), 0)
-    edges = cv2.dilate(cv2.Canny(gray, 50, 150), None, iterations=1)
+    edges = cv2.Canny(gray, 40, 120)
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))   # bridge small gaps
     contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     total = small.shape[0] * small.shape[1]
 
-    for c in sorted(contours, key=cv2.contourArea, reverse=True)[:8]:
-        area = cv2.contourArea(c) / total
-        if area < MIN_AREA:
-            break
-        if area > MAX_AREA:
+    best, best_area = None, 0.0
+    for c in sorted(contours, key=cv2.contourArea, reverse=True)[:15]:
+        hull = cv2.convexHull(c)
+        area = cv2.contourArea(hull)
+        if not (MIN_AREA <= area / total <= MAX_AREA):
             continue
-        approx = cv2.approxPolyDP(c, 0.02 * cv2.arcLength(c, True), True)
-        if len(approx) != 4 or not cv2.isContourConvex(approx):
+        (cx, cy), (rw, rh), _angle = cv2.minAreaRect(hull)
+        if rw < 1 or rh < 1 or area / (rw * rh) < MIN_FILL:
             continue
-        quad = order_points(approx.reshape(4, 2).astype(np.float32) / scale)
-        if ASPECT[0] <= aspect_of(quad) <= ASPECT[1]:
-            return quad
-    return None
-
+        quad = order_points(cv2.boxPoints(cv2.minAreaRect(hull)).astype(np.float32) / scale)
+        if ASPECT[0] <= aspect_of(quad) <= ASPECT[1] and area > best_area:
+            best, best_area = quad, area            # keep the biggest valid shape
+    return best
 
 def warp(frame, quad):
     tl, tr, br, bl = quad
@@ -128,6 +131,10 @@ def warp(frame, quad):
         crop = cv2.resize(crop, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
     return crop
 
+def expand(quad, pad):
+    """Push the corners outward from the center by `pad` (0.05 = 5%)."""
+    c = quad.mean(axis=0)
+    return (c + (quad - c) * (1 + pad)).astype(np.float32)
 
 def sharpness(img):
     return float(cv2.Laplacian(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var())
@@ -182,6 +189,7 @@ def main(debug):
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_W)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_H)
     if not cap.isOpened():
+        print(f"camera running at {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
         sys.exit("Camera not available. Check CAMERA_INDEX.")
 
     start_crop_server()
@@ -191,6 +199,8 @@ def main(debug):
     last_crop, first_try_at = None, 0.0
     last_seen, steady_since = 0.0, None
     signaled = False
+    held, missed = None, 0
+    frames, last_report = 0, 0.0
 
     while True:
         ok, frame = cap.read()
@@ -200,13 +210,19 @@ def main(debug):
         now = time.monotonic()
         diag = float(np.hypot(*frame.shape[:2]))
 
-        quad = find_card(frame)
-        if quad is not None:
+        found = find_card(frame)
+        if found is not None:
+            quad, held, missed = found, found, 0
             last_seen = now
-            history.append(quad.mean(axis=0))
+            history.append(found.mean(axis=0))
+        elif held is not None and missed < MISS_TOLERANCE:
+            quad, missed = held, missed + 1          # flicker: keep the last good outline
         else:
+            quad, held = None, None
             history.clear()
             steady_since = None
+
+        steady = quad is not None and is_steady(history, diag)
 
         if state == "wait_clear":
             if quad is None and now - last_seen >= CLEAR_SECONDS:
@@ -222,15 +238,18 @@ def main(debug):
             if attempt == 2 and last_crop is not None and now - first_try_at > RETRY_TIMEOUT:
                 submit(last_crop, 2)                  # last chance with the previous frame
                 state = "wait_clear"
-            elif quad is not None and is_steady(history, diag):
+            elif steady:
                 if not signaled:
                     fire_signal("card")
                     signaled = True
                 steady_since = steady_since or now
-                crop = warp(frame, quad)
+                crop = warp(frame, expand(quad, CARD_PAD))
                 soft = (now - steady_since) > SOFT_SEND_AFTER
                 if sharpness(crop) >= MIN_SHARPNESS or soft:
                     last_crop = crop
+                    if debug:
+                        print(f"crop {crop.shape[1]}x{crop.shape[0]}  sharpness={sharpness(crop):.0f}")
+                        cv2.imshow("last crop sent", crop)
                     result = submit(crop, attempt)
                     if result == "retry":
                         attempt, first_try_at = 2, now
@@ -240,10 +259,16 @@ def main(debug):
                         state = "wait_clear"
 
         if debug:
+            frames += 1
+            if now - last_report > 2:
+                seen = "found" if found is not None else ("held" if quad is not None else "none")
+                print(f"fps~{frames / 2:.0f}  card={seen}  steady={len(history)}/{STEADY_FRAMES}  state={state}")
+                frames, last_report = 0, now
             view = frame.copy()
             if quad is not None:
-                cv2.polylines(view, [quad.astype(np.int32)], True, (0, 255, 0), 3)
-            cv2.putText(view, f"{state} attempt={attempt}", (20, 40),
+                color = (0, 255, 0) if found is not None else (0, 165, 255)   # green = seen, orange = held
+                cv2.polylines(view, [expand(quad, CARD_PAD).astype(np.int32)], True, color, 3)
+            cv2.putText(view, f"{state} attempt={attempt} steady={len(history)}/{STEADY_FRAMES}", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
             cv2.imshow("capture (q to quit)", cv2.resize(view, None, fx=0.5, fy=0.5))
             if cv2.waitKey(1) & 0xFF == ord("q"):
