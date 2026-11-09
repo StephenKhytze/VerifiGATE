@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { Check, Contact, X } from 'lucide-react';
 import { usePoll } from '@/hooks/use-poll';
 import type { ScreenState } from '@/lib/gate-api';
+import React, {memo, useState, useEffect} from 'react';
 
 const GREEN = '#2B8132';
 const RED = '#C52F37';
@@ -13,6 +14,44 @@ const TINT: Record<ScreenState['screen'], string> = {
     visitor_welcome: 'bg-[#2B8132]/55',
     flagged: 'bg-[#C52F37]/55',
 };
+
+// debugging reset frame button
+const resetFrameHandler = async () => {
+    try {
+        await fetch("http://localhost:8001/reset_frame")
+        console.log("Frame reset")
+    } catch (error) {
+        console.error("Error resetting frame:", error)
+    }
+}
+
+const scanIDHandler = async () => {
+    try {
+        await fetch("http://localhost:8001/id_scanned")
+        console.log("Scanned ID")
+    } catch (error) {
+        console.error("Error scanning ID:", error)
+    }
+}
+
+const WebcamBackground = memo(() => {
+    const [streamUrl, setStreamUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        setStreamUrl(`http://localhost:8001/video_feed?t=${Date.now()}`)
+    }, []);
+
+    if (!streamUrl) {
+        return <div className='absolute inset-0 w-full h-full bg-black z-0'></div>
+    }
+    return (
+        <img
+            src={streamUrl}
+            alt='Student-facing Monitor Cam'
+            className='absolute inset-0 w-full h-full object-cover z-0'
+        />
+    );
+}, () => true)
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
     return (
@@ -33,7 +72,9 @@ export default function GateScreen() {
     return (
         <div className="relative flex h-screen w-screen select-none flex-col items-center overflow-hidden bg-gradient-to-b from-neutral-600 to-neutral-900 text-white">
             <Head title="VerifiGATE" />
-            {/* TODO: the live uniform-camera video goes here, behind the tint */}
+            {/* uniform camera */}
+            <WebcamBackground />
+            
             <div className={`absolute inset-0 transition-colors duration-300 ${TINT[s.screen]}`} />
             {s.screen === 'scanning' && (
                 <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-[#2B8132] to-transparent" />
@@ -94,6 +135,19 @@ export default function GateScreen() {
                         </Badge>
                     </>
                 )}
+                {/* debugging reset frame */}
+                <button
+                    onClick={resetFrameHandler}
+                    className='bg-white text-black'
+                >
+                    Reset Frame
+                </button>
+                <button
+                    onClick={scanIDHandler}
+                    className='bg-white text-black'
+                >
+                    Scan ID Demo
+                </button>
             </main>
 
             <footer className="relative z-10 mb-[6vh] h-[12vh] text-center">
@@ -104,6 +158,7 @@ export default function GateScreen() {
                     </>
                 )}
             </footer>
+
         </div>
     );
 }
