@@ -1,20 +1,39 @@
 # import time
 import os
+from dotenv import load_dotenv
+
 import cv2
 import time
 import threading
 import asyncio
 import mediapipe as mp
+
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
+
 from db_utils import get_student_attire_condition
+
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+# ---
+# secure access via token
+# ---
+
+# load token from .env file
+load_dotenv()
+GATE_TOKEN = os.getenv("GATE_TOKEN", "default_fallback_token")
+
+def verify_access(token: str = Query(None)):
+  # if token is wrong or does not exist
+  if token != GATE_TOKEN:
+    # raise exception code 401
+    raise HTTPException(status_code=401, detail="Unauthorized Access: Missing or Invalid Token")
 
 # ---
 # create pose detector
@@ -296,7 +315,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=["*"],
+  allow_origins=["http://localhost:8000", "http://localhost:5173", "http://127.0.0.1:8000"],
   allow_methods=["*"],
   allow_headers=["*"]
 )
@@ -326,12 +345,12 @@ async def generate_frames():
 # ---
 # fast api endpoints
 # ---
-@app.get("/video_feed")
+@app.get("/video_feed", dependencies=[Depends(verify_access)])
 async def video_feed():
   return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 # reset frame (debugging; need way to do this automatically obv in actual)
-@app.get("/reset_frame")
+@app.get("/reset_frame", dependencies=[Depends(verify_access)])
 def reset_frame():
   global freeze_frame
   freeze_frame = None
@@ -380,4 +399,4 @@ def scan_demo():
 
 # run fastapi server
 if __name__ == "__main__":
-  uvicorn.run(app, host="0.0.0.0", port=8001)
+  uvicorn.run(app, host="127.0.0.1", port=8002)

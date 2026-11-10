@@ -88,3 +88,63 @@ Never commit real token values. Use `.env.example` with placeholders.
 ### Not built yet
 
 Exit scanning, registration-card parsing, the uniform checker connection, the live camera view, SMS "Important" cards, and the guard role check.
+
+## Uniform Checker Module (VerifiGATE)
+
+The Uniform Checker is a privacy-first computer vision service. It uses **MediaPipe Pose** to isolate the student's body in the frame (height-agnostic) and a **CLIP** zero-shot classifier to evaluate attire against dynamic, database-driven "Anchor Prompts" (e.g., distinguishing between compliant uniforms, valid civilian attire, and inappropriate clothing). 
+
+### Ports and processes (development)
+
+| Process | Address | How to start |
+|---|---|---|
+| Uniform Checker (FastAPI, Python) | http://127.0.0.1:8002 | `uvicorn uniform_checker_module:app --host 127.0.0.1 --port 8002` |
+
+*Note: Ensure this runs on a different port (e.g., `8002`) than the OCR service (`8001`).*
+
+### Endpoints (FastAPI, Protected by Token)
+
+These endpoints require a valid token passed as a URL query parameter (`?token=YOUR_TOKEN`), as standard HTTP headers cannot be attached to HTML `<img>` media streams.
+
+| Method | URL | Purpose |
+|---|---|---|
+| GET | `/video_feed?token=` | An MJPEG multi-part stream of the live webcam. Pauses on a freeze frame when a full body is detected. |
+| GET | `/reset_frame?token=` | Clears the active freeze frame and resumes the live camera feed. |
+| GET | `/id_scanned?token=` | Evaluates the frozen crop against CLIP anchor prompts based on the student's expected attire. |
+
+### How a uniform check flows
+
+```text
+Camera -> MediaPipe (Detects Full Body via Nose-to-Foot Ratio) -> Triggers Freeze Frame
+                                                                       |
+                  Streamed via MJPEG to Student/Guard React UI <-------+
+                                                                       |
+Student Scans ID -> Laravel triggers /id_scanned -> CLIP Inference on frozen crop
+                                                                       |
+               <--- Returns Compliant / Flagged / Denied string -------+
+```
+
+### Security & Environment Variables (.env Setup)
+
+To prevent unauthorized access to the live camera feed and evaluation endpoints, the Uniform Checker is secured using a synchronized token between the React frontend and the Python backend.
+
+**1. Generating a Secure Token:**
+Never use a simple password. Generate a secure 64-character hex token by running this command in your terminal:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**2. Python Backend (`.env`):**
+Create a `.env` file in the same directory as your Uniform Checker Python script and add the token:
+```env
+GATE_TOKEN=paste_your_generated_token_here
+```
+
+**3. Laravel/React Frontend (`.env`):**
+Add the *exact same token* to your main Laravel `.env` file. 
+
+```env
+VITE_GATE_TOKEN=paste_your_generated_token_here
+```
+*Note: It is prefixed with `VITE_` so the React frontend is permitted to bundle it and append it to the `<img>` stream URL.*
+
+*Important: Never commit real token values to version control.*

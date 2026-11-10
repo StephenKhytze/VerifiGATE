@@ -15,19 +15,25 @@ const TINT: Record<ScreenState['screen'], string> = {
     flagged: 'bg-[#C52F37]/55',
 };
 
+// gate token
+const gate_token = import.meta.env.VITE_GATE_TOKEN;
+
 // debugging reset frame button
 const resetFrameHandler = async () => {
     try {
-        await fetch("http://localhost:8001/reset_frame")
+        await fetch(`http://localhost:8001/reset_frame?token=${gate_token}`)
         console.log("Frame reset")
     } catch (error) {
         console.error("Error resetting frame:", error)
     }
 }
 
+// debugging scan id button
 const scanIDHandler = async () => {
+    const token = import.meta.env.VITE_GATE_TOKEN;
+
     try {
-        await fetch("http://localhost:8001/id_scanned")
+        await fetch(`http://localhost:8001/id_scanned?token=${gate_token}`)
         console.log("Scanned ID")
     } catch (error) {
         console.error("Error scanning ID:", error)
@@ -36,9 +42,10 @@ const scanIDHandler = async () => {
 
 const WebcamBackground = memo(() => {
     const [streamUrl, setStreamUrl] = useState<string | null>(null);
+    const token = import.meta.env.VITE_GATE_TOKEN;
 
     useEffect(() => {
-        setStreamUrl(`http://localhost:8001/video_feed?t=${Date.now()}`)
+        setStreamUrl(`http://localhost:8001/video_feed?t=${Date.now()}&token=${gate_token}`)
     }, []);
 
     if (!streamUrl) {
