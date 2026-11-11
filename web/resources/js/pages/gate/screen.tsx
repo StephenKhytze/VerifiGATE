@@ -21,7 +21,7 @@ const gate_token = import.meta.env.VITE_GATE_TOKEN;
 // debugging reset frame button
 const resetFrameHandler = async () => {
     try {
-        await fetch(`http://localhost:8001/reset_frame?token=${gate_token}`)
+        await fetch(`http://localhost:8002/reset_frame?token=${gate_token}`)
         console.log("Frame reset")
     } catch (error) {
         console.error("Error resetting frame:", error)
@@ -33,7 +33,7 @@ const scanIDHandler = async () => {
     const token = import.meta.env.VITE_GATE_TOKEN;
 
     try {
-        await fetch(`http://localhost:8001/id_scanned?token=${gate_token}`)
+        await fetch(`http://localhost:8002/id_scanned?token=${gate_token}`)
         console.log("Scanned ID")
     } catch (error) {
         console.error("Error scanning ID:", error)
@@ -45,7 +45,7 @@ const WebcamBackground = memo(() => {
     const token = import.meta.env.VITE_GATE_TOKEN;
 
     useEffect(() => {
-        setStreamUrl(`http://localhost:8001/video_feed?t=${Date.now()}&token=${gate_token}`)
+        setStreamUrl(`http://localhost:8002/video_feed?t=${Date.now()}&token=${gate_token}`)
     }, []);
 
     if (!streamUrl) {

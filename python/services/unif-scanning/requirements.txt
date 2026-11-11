@@ -7,3 +7,5 @@ mysql-connector-python
 fastapi 
 uvicorn
 python-dotenv
+einops
+moondream==0.0.5

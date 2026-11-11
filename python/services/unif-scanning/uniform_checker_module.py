@@ -102,24 +102,47 @@ standard_unif_prompts = {
     "A photo of a person wearing a black blazer with a white undershirt, an ID lace, a black skirt, and black shoes"
   ],
   "Civilian": [
-  # inappropriate attire (visitor/civilian)
-  "A photo of a person wearing ripped jeans",
-  "A photo of a person wearing a sleeveless tank top",
-  "A photo of a person wearing a midriff-baring crop top",
-  "A photo of a person wearing a skirt higher than the knees",
+    # inappropriate attire (visitor/civilian)
+    "A photo of a person wearing ripped jeans",
+    "A photo of a person wearing a sleeveless tank top",
+    "A photo of a person wearing a midriff-baring crop top",
+    "A photo of a person wearing a skirt higher than the knees",
 
-  # appropriate attire
-  "A photo of a person wearing a standard t-shirt and neat jeans",
-  "A photo of a person wearing a modest polo shirt and trousers",
-  "A photo of a person wearing appropriate, modest casual clothing"
-  ]
+    # appropriate attire
+    "A photo of a person wearing a standard t-shirt and neat jeans",
+    "A photo of a person wearing a modest polo shirt and trousers",
+    "A photo of a person wearing appropriate, modest casual clothing"
+  ],
+  # "P.E. Uniform": [
+  #   # inappropriate (change index to 1)
+  #   "A photo of a person wearing a dark colored shirt",
+  #   "A photo of a person wearing pants that are not dark blue",
+  #   "A photo of a person wearing denim jeans",
+
+  #   "A photo of a person wearing a white shirt and dark blue pants"
+  # ]
+  "P.E. Uniform": [
+    # inappropriate (index 1)
+    "a photo of a person wearing a white t-shirt and light blue denim jeans",
+    "a photo of a person wearing a white t-shirt and faded blue wide-leg jeans",
+    "a photo of a person wearing a white t-shirt and dark blue denim jeans",
+    "a photo of a person wearing a white t-shirt and black jeans",
+    "a photo of a person wearing a white t-shirt and khaki cargo pants",
+    "a photo of a person wearing a dark colored shirt and jeans",
+
+    # appropriate (index 0)
+    "a photo of a person wearing a white t-shirt and royal blue track pants with a white stripe down the side",
+    "a photo of a person wearing a white t-shirt and shiny blue polyester athletic pants",
+    "a photo of a person wearing a white t-shirt and blue sports jogging pants",
+    "a photo of a person in a white shirt and blue school PE pants",
+]
 }
 
 
 # means that anything past 3 is appropriate attire
 # allows confidence distribution to be "anchored", meaning that no two prompts can have a high confidence score
 # can also dynamically change, for example becoming 0 if student needs to be wearing uniform
-INAPPROPRIATE_MAX_INDEX = 3
+INAPPROPRIATE_MAX_INDEX = 5
 PIERCING_MAX_INDEX = 1
 
 # ---
@@ -360,7 +383,7 @@ def reset_frame():
 def scan_demo():
   if freeze_frame is not None:
     # replace no. with scan from id here
-    scanned_student_no = "H24-9003"
+    scanned_student_no = "H24-9001"
     attire_condition = get_student_attire_condition(scanned_student_no)
 
     rgb_clip_image = cv2.cvtColor(clip_frame, cv2.COLOR_BGR2RGB)
@@ -393,7 +416,7 @@ def scan_demo():
       print(f"DENIED: Inappropriate attire detected ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
     # 3. attire is compliant with high confidence
     else:
-      print(f"APPROVED: Compliant civilian attire ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
+      print(f"APPROVED: Compliant attire ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
 
     return {"status": "ID scanned"}
 
