@@ -64,16 +64,24 @@ pose_landmarker = vision.PoseLandmarker.create_from_options(options)
 #    Optional .env settings:
 #      MOONDREAM_MODEL=path/to/model.mf
 #      REFERENCE_IMAGE=path/to/pe_unif.png
-#      COMPARE_HEIGHT=512        (raise to 640-768 for more shirt detail, but slower)
-#      ASK_FOR_REASON=0          (1 = ask for a one-sentence reason, a bit slower)
+#      COMPARE_HEIGHT=378        (default = fast. Raise to 512-768 for more shirt detail, but slower)
+#      PANEL_RATIO=0.48          (panel width / height. Raise it if the student gets squeezed)
+#      CROP_OUT_HEAD=1           (1 = crop from just above the shoulders: more pixels on clothes,
+#                                 and no face goes to the VLM. 0 = full body as before)
+#      ASK_FOR_REASON=0          (1 = after a NO, ask a follow-up for the reason. Costs a few
+#                                 seconds because it reuses the already-encoded image)
 #      DEBUG_SAVE_COMPARISON=0   (1 = save the stitched image to see what the model sees;
 #                                 it overwrites ONE file each scan. Turn off for real use.)
 # ---
 MODEL_PATH = os.getenv("MOONDREAM_MODEL", os.path.join(script_dir, "moondream-2b-int8.mf"))
 REFERENCE_PATH = os.getenv("REFERENCE_IMAGE", os.path.join(script_dir, "pe_unif.png"))
-PANEL_H = int(os.getenv("COMPARE_HEIGHT", "512"))
-PANEL_W = int(PANEL_H * 0.6)  # each panel is a tall, narrow box, fits a standing person
-GAP = 16
+PANEL_H = int(os.getenv("COMPARE_HEIGHT", "378"))
+PANEL_RATIO = float(os.getenv("PANEL_RATIO", "0.48"))
+PANEL_W = int(PANEL_H * PANEL_RATIO)  # each panel is a tall, narrow box that fits a standing person
+GAP = 8
+# With the defaults the stitched image is about 370 x 378 px, small enough that Moondream
+# should not need to split it into several tiles (that splitting is what makes encoding slow).
+CROP_OUT_HEAD = os.getenv("CROP_OUT_HEAD", "1") == "1"
 ASK_FOR_REASON = os.getenv("ASK_FOR_REASON", "0") == "1"
 DEBUG_SAVE_COMPARISON = os.getenv("DEBUG_SAVE_COMPARISON", "0") == "1"
 
@@ -85,10 +93,13 @@ PROMPT = (
     "and the pants. "
     "Is the student on the right wearing the same uniform as the one on the left? "
 )
-PROMPT += (
-    "Reply YES or NO, then one short sentence explaining why."
-    if ASK_FOR_REASON
-    else "Reply with exactly one word: YES or NO."
+PROMPT += "Reply with exactly one word: YES or NO."
+
+# Moondream ignores "YES/NO plus a sentence", so the reason is a separate follow-up question.
+REASON_PROMPT = (
+    "The left panel is the official school uniform and the right panel is a student. "
+    "In one short sentence, what is different about the student's shirt or pants "
+    "compared to the uniform?"
 )
 
 
@@ -235,12 +246,17 @@ def capture_camera():
                     x_min, x_max = int(min(all_x_norm_coords) * width), int(max(all_x_norm_coords) * width)
                     y_min, y_max = int(min(all_y_norm_coords) * height), int(max(all_y_norm_coords) * height)
 
+                    if CROP_OUT_HEAD:
+                        # Start just above the shoulders (landmarks 11 and 12), so the collar stays in.
+                        shoulder_y = min(landmarks[11].y, landmarks[12].y)
+                        y_min = max(0, int(shoulder_y * height) - int(height * 0.05))
+
                     padding_ratio_x = 0.05
                     padding_ratio_y_bottom = 0.05
                     padding_ratio_y_head = 0.15
                     padding_x = int(width * padding_ratio_x)
                     padding_y_bottom = int(height * padding_ratio_y_bottom)
-                    padding_y_top = int(height * padding_ratio_y_head)
+                    padding_y_top = 0 if CROP_OUT_HEAD else int(height * padding_ratio_y_head)
 
                     x_min = max(0, x_min - padding_x)
                     y_min = max(0, y_min - padding_y_top)
@@ -356,22 +372,31 @@ def scan_demo():
         verdict = match.group(1) if match else None
         is_approved = verdict == "YES"
 
+        # Optional follow-up on the SAME encoded image: costs a few seconds, not another encode.
+        reason = None
+        if ASK_FOR_REASON and verdict != "YES":
+            reason = vlm_model.query(enc_image, REASON_PROMPT)["answer"].strip()
+        t3 = time.time()
+
         print("\n--- VLM DECISION ---")
-        print(f"Encode: {t1 - t0:.1f}s | Answer: {t2 - t1:.1f}s | Total: {t2 - t0:.1f}s")
+        print(f"Encode: {t1 - t0:.1f}s | Answer: {t2 - t1:.1f}s | Reason: {t3 - t2:.1f}s | Total: {t3 - t0:.1f}s")
         print(f"RAW ANSWER: {answer!r}")
+        if reason:
+            print(f"REASON: {reason!r}")
         print(f"APPROVED: {is_approved}")
         print("--------------------\n")
 
         timing = {
             "encode_seconds": round(t1 - t0, 2),
             "answer_seconds": round(t2 - t1, 2),
-            "processing_time_seconds": round(t2 - t0, 2),
+            "reason_seconds": round(t3 - t2, 2),
+            "processing_time_seconds": round(t3 - t0, 2),
         }
 
         if verdict is None:
             return {"status": "UNSURE", "reason": f"Unexpected VLM answer: {answer!r}", **timing}
 
-        return {"status": "APPROVED" if is_approved else "DENIED", "reason": answer, **timing}
+        return {"status": "APPROVED" if is_approved else "DENIED", "reason": reason or answer, **timing}
 
     except Exception as e:
         print(f"Error during VLM inference: {e}")
