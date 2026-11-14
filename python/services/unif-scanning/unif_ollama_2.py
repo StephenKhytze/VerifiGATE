@@ -148,9 +148,49 @@ load_reference()
 #     return response.json()["response"].strip()
 
 # Pass the two images separately, don't stitch them
+# def ask_vlm(reference_bgr, live_bgr, question):
+#     ok1, buf1 = cv2.imencode(".jpg", reference_bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
+#     ok2, buf2 = cv2.imencode(".jpg", live_bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    
+#     if not (ok1 and ok2):
+#         raise RuntimeError("Could not encode images for the VLM.")
+
+#     response = requests.post(
+#         OLLAMA_URL,
+#         json={
+#             "model": VLM_MODEL,
+#             "prompt": question,
+#             # Send them as a list of two distinct images
+#             "images": [
+#                 base64.b64encode(buf1.tobytes()).decode(),
+#                 base64.b64encode(buf2.tobytes()).decode()
+#             ],
+#             "stream": False,
+#             "keep_alive": "30m",
+#             "options": {"temperature": 0}, # Removed num_predict constraint to allow reasoning
+#         },
+#         timeout=180,
+#     )
+#     response.raise_for_status()
+#     return response.json()["response"].strip()
+
 def ask_vlm(reference_bgr, live_bgr, question):
-    ok1, buf1 = cv2.imencode(".jpg", reference_bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
-    ok2, buf2 = cv2.imencode(".jpg", live_bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    # --- OPTIMIZATION: Shrink images to a max dimension before sending ---
+    max_dim = 504 # Multiples of 28 are highly optimized for Qwen2.5-VL
+    
+    def resize_for_vlm(img):
+        h, w = img.shape[:2]
+        if max(h, w) > max_dim:
+            scale = max_dim / max(h, w)
+            return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+        return img
+
+    ref_shrunk = resize_for_vlm(reference_bgr)
+    live_shrunk = resize_for_vlm(live_bgr)
+    # ---------------------------------------------------------------------
+
+    ok1, buf1 = cv2.imencode(".jpg", ref_shrunk, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    ok2, buf2 = cv2.imencode(".jpg", live_shrunk, [cv2.IMWRITE_JPEG_QUALITY, 92])
     
     if not (ok1 and ok2):
         raise RuntimeError("Could not encode images for the VLM.")
@@ -160,14 +200,18 @@ def ask_vlm(reference_bgr, live_bgr, question):
         json={
             "model": VLM_MODEL,
             "prompt": question,
-            # Send them as a list of two distinct images
             "images": [
                 base64.b64encode(buf1.tobytes()).decode(),
                 base64.b64encode(buf2.tobytes()).decode()
             ],
             "stream": False,
             "keep_alive": "30m",
-            "options": {"temperature": 0}, # Removed num_predict constraint to allow reasoning
+            "options": {
+                "temperature": 0,
+                # Explicitly tell Ollama to offload all layers to the GPU
+                "num_gpu": -1,
+                "num_ctx": 4096
+            },
         },
         timeout=180,
     )
@@ -175,13 +219,41 @@ def ask_vlm(reference_bgr, live_bgr, question):
     return response.json()["response"].strip()
 
 # Update your prompt to allow reasoning
+# COMPARE_PROMPT = (
+#     "I have provided two images. Image 1 is the official school uniform. Image 2 is a student at the gate. "
+#     "Compare the clothing in both images. Look closely at the printed design on the shirt and the color of the pants. "
+#     "First, briefly describe the shirt and pants in Image 2. "
+#     "Then, on a new line, state exactly 'SHIRT: YES' or 'SHIRT: NO' indicating if they match Image 1. "
+#     "Finally, on a new line, state exactly 'PANTS: YES' or 'PANTS: NO'."
+# )
+# COMPARE_PROMPT = (
+#     "我提供了两张图片。图1是官方校服。图2是一名在门口的学生。"
+#     "对比两张图片中的服装。仔细观察上衣的印花图案和裤子的颜色。"
+#     "首先，简要描述图2中的上衣和裤子。"
+#     "然后，另起一行，严格输出 'SHIRT: YES' 或 'SHIRT: NO'，以表明上衣是否与图1一致。"
+#     "最后，再另起一行，严格输出 'PANTS: YES' 或 'PANTS: NO'。"
+# )
+# COMPARE_PROMPT = (
+#     "图1是标准校服，图2是学生。对比两张图片中的上衣印花和裤子颜色。"
+#     "不要输出任何解释或描述。严格按照以下格式输出两行："
+#     "SHIRT: YES 或 NO"
+#     "PANTS: YES 或 NO"
+# )
+# COMPARE_PROMPT = (
+#     "对比图1（标准校服）和图2（学生）的上衣印花与裤子颜色。"
+#     "严格按以下三行格式输出，不要添加多余内容："
+#     "SHIRT: [YES 或 NO]"
+#     "PANTS: [YES 或 NO]"
+#     "DESC: [用一句话简要描述图2的上衣和裤子]"
+# )
 COMPARE_PROMPT = (
-    "I have provided two images. Image 1 is the official school uniform. Image 2 is a student at the gate. "
-    "Compare the clothing in both images. Look closely at the printed design on the shirt and the color of the pants. "
-    "First, briefly describe the shirt and pants in Image 2. "
-    "Then, on a new line, state exactly 'SHIRT: YES' or 'SHIRT: NO' indicating if they match Image 1. "
-    "Finally, on a new line, state exactly 'PANTS: YES' or 'PANTS: NO'."
+    "对比图1（标准校服）和图2（学生）的上衣印花与裤子颜色。"
+    "严格按以下三行格式输出，不要添加多余内容："
+    "SHIRT: [YES 或 NO]"
+    "PANTS: [YES 或 NO]"
+    "DESC: [用一句话简要描述图2的上衣和裤子]"
 )
+
 
 
 def parse_checklist(text):
