@@ -146,16 +146,15 @@ standard_unif_prompts = {
 #     "a photo of a person wearing a white t-shirt and blue sports jogging pants",
 #     "a photo of a person in a white shirt and blue school PE pants",
 # ]
-  "P.E._Uniform": [
-    # --- INAPPROPRIATE / CIVILIAN (Indices 0 to 3) ---
-    "A photo of a person wearing a plain white t-shirt with no logo and light blue denim jeans", # Directly catches Image 2
+  "P.E. Uniform": [
+    "A photo of a person wearing a plain white t-shirt with no logo and light wash jeans",
     "A photo of a person wearing casual streetwear and baggy jeans",
     "A photo of a person wearing a dark or colored shirt",
-    "A photo of a person wearing a standard school uniform polo shirt and slacks",
+    "A photo of a person wearing a light blue polo shirt and navy slacks",
+    "A photo of a person wearing a navy blazer with a white undershirt and a navy skirt",
 
-    # --- APPROPRIATE P.E. UNIFORM (Indices 4 to 5) ---
     "A photo of a student wearing a white t-shirt with a large circular blue graphic on the chest and royal blue athletic track pants with white side stripes",
-    "A photo of a person wearing a physical education uniform consisting of a printed white shirt and shiny blue jogging pants"
+    "A photo of a person wearing a printed white shirt and shiny blue jogging pants"
   ]
 }
 
@@ -163,7 +162,7 @@ standard_unif_prompts = {
 # means that anything past 3 is appropriate attire
 # allows confidence distribution to be "anchored", meaning that no two prompts can have a high confidence score
 # can also dynamically change, for example becoming 0 if student needs to be wearing uniform
-INAPPROPRIATE_MAX_INDEX = 2
+INAPPROPRIATE_MAX_INDEX = 4
 PIERCING_MAX_INDEX = 1
 
 # ---
@@ -341,11 +340,25 @@ def capture_camera():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   global cap, running
+
+  # clip warmup
+  print(f"[UNIF. CHECKER MODULE] Warming up CLIP...")
+  warmup_start = time.time()
+
+  warmup_image = Image.new("RGB", (224, 224), color="black")
+  
+  for prompts in standard_unif_prompts.values():
+    warmup_inputs = processor(text=prompts, images=warmup_image, return_tensors="pt", padding=True)
+    model(**warmup_inputs)
+
+  print(f"[UNIF. CHECKER MODULE] CLIP warmup completed in {time.time() - warmup_start:.2f}s.")
+
   # start cam
   cap = cv2.VideoCapture(0)
   cam_thread = threading.Thread(target=capture_camera, daemon=True)
   cam_thread.start()
   yield
+
   # shutdown
   running = False
   cam_thread.join(timeout=2.0)
@@ -403,6 +416,9 @@ def reset_frame():
 @app.get("/id_scanned")
 def scan_demo():
   if freeze_frame is not None:
+    # record time taken (debugging)
+    start_time = time.time()
+
     # replace no. with scan from id here
     scanned_student_no = "H24-9001"
     attire_condition = get_student_attire_condition(scanned_student_no)
@@ -418,28 +434,58 @@ def scan_demo():
     logits_per_image = outputs.logits_per_image
     probabilities = logits_per_image.softmax(dim=1).detach().numpy()[0]
 
+    # get average of appropriateness and inappropriateness
+    # makes it so that compliant prompts aren't fighting each other and contribute to the same "compliance" confidence rating
+    inappropriate_prob = sum(probabilities[:INAPPROPRIATE_MAX_INDEX + 1])
+    appropriate_prob = sum(probabilities[INAPPROPRIATE_MAX_INDEX + 1:])
+
+    # get best match
+    best_match_idx = probabilities.argmax()
+    best_match_probability = probabilities[best_match_idx]
+    best_match_prompt = attire_prompts[best_match_idx]
+
     for prompt, probability in zip(attire_prompts, probabilities):
       print(f"{prompt}: {probability * 100:2f}%")
 
-    best_match_idx = probabilities.argmax()
-    best_match_probability = probabilities[best_match_idx]
+    # record time taken (debugging)
+    process_time = time.time() - start_time
+
+    print(f"\n Process completed in {process_time:.2f} seconds")
+    print(f"\n--- SCORE SUMMARY ---")
+    print(f"Total approved probability: {appropriate_prob * 100:.2f}%")
+    print(f"Total inappropriate probability: {inappropriate_prob * 100:.2f}%")
+    print(f"Best matching prompt: {best_match_prompt} at {best_match_probability * 100:2f}%")
 
     # ---
     # confidence-based routing
     # ---    
     confidence_threshold = 0.65
 
-    # 1. low confidence scan (send to guard)
-    if best_match_probability < confidence_threshold:
-      print(f"FLAGGED FOR REVIEW: Low confidence scan ({best_match_probability * 100:.2f}%). Guard must manually verify.")
-    # 2. attire is deemed inappropriate
-    elif best_match_idx <= INAPPROPRIATE_MAX_INDEX:
-      print(f"DENIED: Inappropriate attire detected ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
-    # 3. attire is compliant with high confidence
+    # if system cannot confidently say within threshold, send to guard
+    if max(inappropriate_prob, appropriate_prob) < confidence_threshold:
+      print(f"FLAGGED FOR REVIEW: Low confidence scan. Guard must manually verify. (only {max(inappropriate_prob, appropriate_prob) * 100:.2f}% confidence)")
+    elif inappropriate_prob >= confidence_threshold:
+      # attire is inappropriate
+      print(f"DENIED: Inappropriate attire detected ({inappropriate_prob * 100:.2f}%).")
     else:
-      print(f"APPROVED: Compliant attire ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
+      # attire is appropriate
+      print(f"APPROVED: Compliant attire ({appropriate_prob * 100:.2f}%).")
 
-    return {"status": "ID scanned"}
+
+    # # 1. low confidence scan (send to guard)
+    # if best_match_probability < confidence_threshold:
+    #   print(f"FLAGGED FOR REVIEW: Low confidence scan ({best_match_probability * 100:.2f}%). Guard must manually verify.")
+    # # 2. attire is deemed inappropriate
+    # elif best_match_idx <= INAPPROPRIATE_MAX_INDEX:
+    #   print(f"DENIED: Inappropriate attire detected ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
+    # # 3. attire is compliant with high confidence
+    # else:
+    #   print(f"APPROVED: Compliant attire ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
+
+    approved = bool(appropriate_prob > confidence_threshold)
+
+    return {"status": "ID scanned", 
+            "approved": approved}
 
 # run fastapi server
 if __name__ == "__main__":
