@@ -320,8 +320,9 @@ async def lifespan(app: FastAPI):
 
   print(f"[UNIF. CHECKER MODULE] CLIP warmup completed in {time.time() - warmup_start:.2f}s.")
 
-  # start cam
-  cap = cv2.VideoCapture(0)
+  # start cam (configurable via UNIF_CAMERA_INDEX: supports camera index or video file path)
+  cam_source = os.environ.get("UNIF_CAMERA_INDEX", "0")
+  cap = cv2.VideoCapture(int(cam_source) if cam_source.isdigit() else cam_source)
   cam_thread = threading.Thread(target=capture_camera, daemon=True)
   cam_thread.start()
   yield
