@@ -3,6 +3,7 @@ import { Check, Contact, X } from 'lucide-react';
 import { usePoll } from '@/hooks/use-poll';
 import type { ScreenState } from '@/lib/gate-api';
 import React, {memo, useState, useEffect} from 'react';
+import WebcamBackground from '@/components/gate/webcam-background';
 
 const GREEN = '#2B8132';
 const RED = '#C52F37';
@@ -39,26 +40,6 @@ const scanIDHandler = async () => {
         console.error("Error scanning ID:", error)
     }
 }
-
-const WebcamBackground = memo(() => {
-    const [streamUrl, setStreamUrl] = useState<string | null>(null);
-    const token = import.meta.env.VITE_GATE_TOKEN;
-
-    useEffect(() => {
-        setStreamUrl(`http://localhost:8002/video_feed?t=${Date.now()}&token=${gate_token}`)
-    }, []);
-
-    if (!streamUrl) {
-        return <div className='absolute inset-0 w-full h-full bg-black z-0'></div>
-    }
-    return (
-        <img
-            src={streamUrl}
-            alt='Student-facing Monitor Cam'
-            className='absolute inset-0 w-full h-full object-cover z-0'
-        />
-    );
-}, () => true)
 
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
     return (

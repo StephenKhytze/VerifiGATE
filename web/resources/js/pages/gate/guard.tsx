@@ -6,6 +6,7 @@ import LogCardView from '@/components/gate/log-card';
 import SearchPanel from '@/components/gate/search-panel';
 import { usePoll } from '@/hooks/use-poll';
 import { api, ApiError, type GuardCard, type GuardState } from '@/lib/gate-api';
+import WebcamBackground from '@/components/gate/webcam-background';
 
 const GREEN = '#2B8132';
 const ORANGE = '#FF9831';
@@ -103,7 +104,7 @@ function Review({
                         <b>Uniform: </b>
                         <span style={{ color: UNIFORM[card.uniform.status].color }}>
                             {UNIFORM[card.uniform.status].text}
-                            {card.uniform.confidence !== null ? ` (${card.uniform.confidence.toFixed(2)}%)` : ''}
+                            {card.uniform.confidence != null ? ` (${Number(card.uniform.confidence).toFixed(2)}%)` : ''}
                         </span>
                         <div>
                             <b>Exceptions: </b>
@@ -143,9 +144,8 @@ function Review({
             </section>
 
             <section>
-                {/* TODO: replace with the live uniform-camera frame when that module exists */}
-                <div className="flex h-[52vh] items-center justify-center rounded-lg bg-neutral-200 p-6 text-center text-neutral-500">
-                    Live camera not connected yet
+                <div className="relative h-128 w-full overflow-hidden rounded-lg bg-black">
+                    <WebcamBackground />
                 </div>
 
                 {mode === 'result' && card.status !== 'pending' && (

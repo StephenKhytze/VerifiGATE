@@ -113,39 +113,6 @@ standard_unif_prompts = {
     "A photo of a person wearing a modest polo shirt and trousers",
     "A photo of a person wearing appropriate, modest casual clothing"
   ],
-  # "P.E. Uniform": [
-  #   # inappropriate (change index to 1)
-  #   "A photo of a person wearing a dark colored shirt",
-  #   "A photo of a person wearing pants that are not dark blue",
-  #   "A photo of a person wearing denim jeans",
-
-  #   "A photo of a person wearing a white shirt and dark blue pants"
-  # ]
-#   "P.E. Uniform": [
-#     # inappropriate (index 1)
-#     "a photo of a person wearing a white t-shirt and light blue denim jeans",
-#     "a photo of a person wearing a white t-shirt and faded blue wide-leg jeans",
-#     "a photo of a person wearing a white t-shirt and dark blue denim jeans",
-#     "a photo of a person wearing a white t-shirt and black jeans",
-#     "a photo of a person wearing a white t-shirt and khaki cargo pants",
-#     "a photo of a person wearing a dark colored shirt and jeans",
-
-#     # appropriate (index 0)
-#     "a photo of a person wearing a white t-shirt with a blue '100' and royal blue track pants with a white stripe down the side",
-#     "a photo of a person wearing a white t-shirt with the words 'LAGUNA COLLEGE' and shiny blue polyester athletic pants",
-#     "a photo of a person wearing a white t-shirt and blue sports jogging pants",
-#     "a photo of a person in a white shirt and blue school PE pants",
-# ]
-#   "P.E. Uniform": [
-#     "A photo of a person wearing a dark colored shirt",
-#     "A photo of a person wearing pants that are not dark blue",
-#     "A photo of a person wearing denim jeans",
-
-#     "a photo of a person wearing a white t-shirt with the words 'LAGUNA COLLEGE' and '100' a and royal blue track pants with a white stripe down the side",
-#     "a photo of a person wearing a white t-shirt with the words 'LAGUNA COLLEGE' and shiny blue polyester athletic pants",
-#     "a photo of a person wearing a white t-shirt and blue sports jogging pants",
-#     "a photo of a person in a white shirt and blue school PE pants",
-# ]
   "P.E. Uniform": [
     "A photo of a person wearing a plain white t-shirt with no logo and light wash jeans",
     "A photo of a person wearing casual streetwear and baggy jeans",
@@ -346,7 +313,7 @@ async def lifespan(app: FastAPI):
   warmup_start = time.time()
 
   warmup_image = Image.new("RGB", (224, 224), color="black")
-  
+
   for prompts in standard_unif_prompts.values():
     warmup_inputs = processor(text=prompts, images=warmup_image, return_tensors="pt", padding=True)
     model(**warmup_inputs)
@@ -413,9 +380,21 @@ def reset_frame():
   freeze_frame = None
   return {"status": "Frame reset"}
 
+last_processed_frame = None
+cached_scan_result = None
+
 @app.get("/id_scanned")
 def scan_demo():
-  if freeze_frame is not None:
+    global freeze_frame, last_processed_frame, cached_scan_result
+
+    # return unavailable if freeze frame does not exist
+    if freeze_frame is None:
+      return {"status": "unavailable", "confidence": 0.0}
+
+    # if existing scan result already exists, return it
+    if cached_scan_result is not None and last_processed_frame is freeze_frame:
+      return cached_scan_result
+    
     # record time taken (debugging)
     start_time = time.time()
 
@@ -460,32 +439,29 @@ def scan_demo():
     # confidence-based routing
     # ---    
     confidence_threshold = 0.65
+    highest_confidence = max(inappropriate_prob, appropriate_prob)
+
+    status = "approved"
 
     # if system cannot confidently say within threshold, send to guard
-    if max(inappropriate_prob, appropriate_prob) < confidence_threshold:
-      print(f"FLAGGED FOR REVIEW: Low confidence scan. Guard must manually verify. (only {max(inappropriate_prob, appropriate_prob) * 100:.2f}% confidence)")
+    if highest_confidence < confidence_threshold:
+      print(f"FLAGGED FOR REVIEW: Low confidence scan. Guard must manually verify. (only {highest_confidence * 100:.2f}% confidence)")
+      status = "low-confidence"
     elif inappropriate_prob >= confidence_threshold:
       # attire is inappropriate
       print(f"DENIED: Inappropriate attire detected ({inappropriate_prob * 100:.2f}%).")
+      status = "denied"
     else:
       # attire is appropriate
       print(f"APPROVED: Compliant attire ({appropriate_prob * 100:.2f}%).")
 
-
-    # # 1. low confidence scan (send to guard)
-    # if best_match_probability < confidence_threshold:
-    #   print(f"FLAGGED FOR REVIEW: Low confidence scan ({best_match_probability * 100:.2f}%). Guard must manually verify.")
-    # # 2. attire is deemed inappropriate
-    # elif best_match_idx <= INAPPROPRIATE_MAX_INDEX:
-    #   print(f"DENIED: Inappropriate attire detected ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
-    # # 3. attire is compliant with high confidence
-    # else:
-    #   print(f"APPROVED: Compliant attire ({attire_prompts[best_match_idx]} at {best_match_probability * 100:.2f}%).")
-
     approved = bool(appropriate_prob > confidence_threshold)
 
-    return {"status": "ID scanned", 
-            "approved": approved}
+    cached_scan_result = {"status": status, "confidence": float(highest_confidence * 100)}
+
+    last_processed_frame = freeze_frame
+
+    return cached_scan_result
 
 # run fastapi server
 if __name__ == "__main__":

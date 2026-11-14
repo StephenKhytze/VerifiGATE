@@ -90,6 +90,11 @@ Never commit real token values. Use `.env.example` with placeholders.
 Exit scanning, registration-card parsing, the uniform checker connection, the live camera view, SMS "Important" cards, and the guard role check.
 
 ## Uniform Checker Module (VerifiGATE)
+Features to be added:
+- Piercing check for male students
+- Checking of ID lace
+- Adding new uniform/dept. shirt (will be added when Admin side is in development)
+- Improving prompts
 
 The Uniform Checker is a privacy-first computer vision service. It uses **MediaPipe Pose** to isolate the student's body in the frame (height-agnostic) and a **CLIP** zero-shot classifier to evaluate attire against dynamic, database-driven "Anchor Prompts" (e.g., distinguishing between compliant uniforms, valid civilian attire, and inappropriate clothing). 
 
