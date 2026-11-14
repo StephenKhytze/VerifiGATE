@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\IdScan\ConfigUniformProvider;
+use App\Services\IdScan\PythonUniformProvider;
 use App\Services\IdScan\UniformProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -17,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(UniformProvider::class, ConfigUniformProvider::class);
+        $this->app->bind(UniformProvider::class, PythonUniformProvider::class);
     }
 
     /**
