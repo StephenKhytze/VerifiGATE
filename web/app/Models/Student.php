@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPersonName;
 use Illuminate\Database\Eloquent\Model;
-use App\Enums\Sex;
+use App\Enums\Gate\Sex;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 
 
