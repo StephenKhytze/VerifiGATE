@@ -14,8 +14,8 @@ import requests
 LARAVEL = os.environ.get("LARAVEL_URL", "http://127.0.0.1:8000")
 TOKEN = os.environ["STATION_TOKEN"]
 CAM = int(os.environ.get("CAMERA_INDEX", "0"))
-CAM_W = int(os.environ.get("CAM_W", "1920"))
-CAM_H = int(os.environ.get("CAM_H", "1080"))
+CAM_W = int(os.environ.get("CAM_W", "1280"))
+CAM_H = int(os.environ.get("CAM_H", "720"))
 CROP_PORT = int(os.environ.get("CROP_PORT", "8003"))
 
 # ---- scan zone (fractions of the frame) ----
@@ -40,6 +40,8 @@ MAX_CROP_SIDE = int(os.environ.get("MAX_CROP_SIDE", "1100"))
 JPEG_QUALITY = 85
 CROP_TTL = 600               # seconds a crop stays in memory
 CROP_MAX_ITEMS = 50
+FOCUS = os.environ.get("FOCUS", "")                    # e.g. "40"; empty = leave the camera's autofocus alone
+FOCUS_STEP = float(os.environ.get("FOCUS_STEP", "5"))
 
 # ---- crops kept in memory only, served to Laravel on 127.0.0.1 ----
 CROPS = {}                   # event_id -> (expires_at, jpeg bytes)
@@ -157,6 +159,9 @@ def open_camera(index):
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_W)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_H)
+    if FOCUS != "":
+        cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)              # autofocus off
+        cap.set(cv2.CAP_PROP_FOCUS, float(FOCUS))       # fixed focus value
     return cap
 
 
@@ -217,6 +222,7 @@ def main(debug):
     start_crop_server()
 
     zone = {"x": ZONE_X, "y": ZONE_Y, "size": ZONE_SIZE}
+    focus = float(FOCUS) if FOCUS != "" else None
     state, attempt = "armed", 1
     last_crop, first_try_at = None, 0.0
     last_seen, steady_since = 0.0, None
@@ -314,10 +320,23 @@ def main(debug):
                 zone["size"] = float(np.clip(zone["size"], 0.2, 1.0))
                 print(f"ZONE_X={zone['x']:.2f}  ZONE_Y={zone['y']:.2f}  ZONE_SIZE={zone['size']:.2f}   (copy into .env)")
                 ready, prev_tiny = 0, None
+            if key in (ord("["), ord("]")):
+                cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+                base = focus if focus is not None else max(cap.get(cv2.CAP_PROP_FOCUS), 0.0)
+                focus = max(0.0, base + (FOCUS_STEP if key == ord("]") else -FOCUS_STEP))
+                cap.set(cv2.CAP_PROP_FOCUS, focus)
+                print(f"FOCUS={focus:.0f}  (camera reports {cap.get(cv2.CAP_PROP_FOCUS):.0f})   copy into .env")
+            if key == ord("t"):
+                cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+                focus = None
+                print("autofocus ON")
+            if key == ord("p"):
+                cap.set(cv2.CAP_PROP_SETTINGS, 1)        # opens the camera driver's own settings window
             if key == ord("c"):
                 cap, cam_index = switch_camera(cap, cam_index)
                 if cap is None:
                     sys.exit("No camera could be opened.")
+                    focus = float(FOCUS) if FOCUS != "" else None
                 print(f"camera {cam_index} running at {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
                 state, attempt, last_crop, steady_since, ready, prev_tiny = "armed", 1, None, None, 0, None
                 if signaled:
