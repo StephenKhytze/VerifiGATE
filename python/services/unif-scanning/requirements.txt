@@ -1,0 +1,9 @@
+mediapipe 
+opencv-python
+transformers
+torch
+torchvision
+mysql-connector-python
+fastapi 
+uvicorn
+python-dotenv
