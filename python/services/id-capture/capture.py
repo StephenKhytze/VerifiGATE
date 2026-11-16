@@ -10,9 +10,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import cv2
 import numpy as np
 import requests
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 LARAVEL = os.environ.get("LARAVEL_URL", "http://127.0.0.1:8000")
-TOKEN = os.environ["STATION_TOKEN"]
+TOKEN = os.environ.get("STATION_TOKEN", "35a3ac2aa19d749dba6489e3a22ec9e7a6a012a0f1ef4c6913b7d7646fa2dbf0")
 CAM = int(os.environ.get("CAMERA_INDEX", "0"))
 CAM_W = int(os.environ.get("CAM_W", "1280"))
 CAM_H = int(os.environ.get("CAM_H", "720"))

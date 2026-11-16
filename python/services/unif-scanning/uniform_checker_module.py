@@ -1,5 +1,6 @@
 # import time
 import os
+from typing import Optional
 from dotenv import load_dotenv
 
 import cv2
@@ -27,7 +28,7 @@ from contextlib import asynccontextmanager
 
 # load token from .env file
 load_dotenv()
-GATE_TOKEN = os.getenv("GATE_TOKEN", "default_fallback_token")
+GATE_TOKEN = os.getenv("GATE_TOKEN") or os.getenv("VITE_GATE_TOKEN") or "a9e7aa90f9de0a3d04c7e5b46d5923a7fe5ed65813fa131d05a2a40d64511845"
 
 def verify_access(token: str = Query(None)):
   # if token is wrong or does not exist
@@ -385,28 +386,49 @@ last_processed_frame = None
 cached_scan_result = None
 
 @app.get("/id_scanned")
-def scan_demo():
-    global freeze_frame, last_processed_frame, cached_scan_result
+def scan_demo(
+    token: Optional[str] = Query(None),
+    student_number: Optional[str] = Query(None),
+    sex: Optional[str] = Query(None)
+):
+    if GATE_TOKEN and token != GATE_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized Access: Missing or Invalid Token")
 
-    # return unavailable if freeze frame does not exist
-    if freeze_frame is None:
-      return {"status": "unavailable", "confidence": 0.0}
+    global freeze_frame, last_processed_frame, cached_scan_result, clip_frame
 
-    # if existing scan result already exists, return it
-    if cached_scan_result is not None and last_processed_frame is freeze_frame:
-      return cached_scan_result
-    
+    target_frame = clip_frame if clip_frame is not None else freeze_frame
+
+    # return unavailable if neither crop nor freeze frame exists
+    if target_frame is None:
+        return {"status": "unavailable", "confidence": 0.0}
+
     # record time taken (debugging)
     start_time = time.time()
 
-    # replace no. with scan from id here
-    scanned_student_no = "H24-9001"
-    attire_condition = get_student_attire_condition(scanned_student_no)
+    # determine attire condition dynamically
+    attire_condition = None
+    if student_number:
+        try:
+            attire_condition = get_student_attire_condition(student_number)
+        except Exception as e:
+            print(f"[UNIFORM] Database lookup error for student {student_number}: {e}")
+            attire_condition = None
 
-    rgb_clip_image = cv2.cvtColor(cv2.flip(clip_frame, 1), cv2.COLOR_BGR2RGB)
+    if not attire_condition or attire_condition == "Unknown":
+        if sex:
+            attire_condition = f"Standard_{sex.upper()}"
+        else:
+            attire_condition = "Standard_MALE"
+
+    # Match key case-insensitively or fallback
+    matched_key = next((k for k in standard_unif_prompts if k.upper() == attire_condition.upper()), None)
+    if matched_key:
+        attire_prompts = standard_unif_prompts[matched_key]
+    else:
+        attire_prompts = standard_unif_prompts.get("Standard_MALE", list(standard_unif_prompts.values())[0])
+
+    rgb_clip_image = cv2.cvtColor(cv2.flip(target_frame, 1), cv2.COLOR_BGR2RGB)
     pli_image = Image.fromarray(rgb_clip_image)
-
-    attire_prompts = standard_unif_prompts[attire_condition]
 
     inputs = processor(text=attire_prompts, images=pli_image, return_tensors="pt", padding=True)
     outputs = model(**inputs)
@@ -425,16 +447,16 @@ def scan_demo():
     best_match_prompt = attire_prompts[best_match_idx]
 
     for prompt, probability in zip(attire_prompts, probabilities):
-      print(f"{prompt}: {probability * 100:2f}%")
+        print(f"{prompt}: {probability * 100:.2f}%")
 
     # record time taken (debugging)
     process_time = time.time() - start_time
 
     print(f"\n Process completed in {process_time:.2f} seconds")
-    print(f"\n--- SCORE SUMMARY ---")
+    print("\n--- SCORE SUMMARY ---")
     print(f"Total approved probability: {appropriate_prob * 100:.2f}%")
     print(f"Total inappropriate probability: {inappropriate_prob * 100:.2f}%")
-    print(f"Best matching prompt: {best_match_prompt} at {best_match_probability * 100:2f}%")
+    print(f"Best matching prompt: {best_match_prompt} at {best_match_probability * 100:.2f}%")
 
     # ---
     # confidence-based routing
@@ -442,21 +464,18 @@ def scan_demo():
     confidence_threshold = 0.65
     highest_confidence = max(inappropriate_prob, appropriate_prob)
 
-    status = "approved"
-
     # if system cannot confidently say within threshold, send to guard
     if highest_confidence < confidence_threshold:
-      print(f"FLAGGED FOR REVIEW: Low confidence scan. Guard must manually verify. (only {highest_confidence * 100:.2f}% confidence)")
-      status = "low-confidence"
+        print(f"FLAGGED FOR REVIEW: Low confidence scan. Guard must manually verify. (only {highest_confidence * 100:.2f}% confidence)")
+        status = "low_confidence"
     elif inappropriate_prob >= confidence_threshold:
-      # attire is inappropriate
-      print(f"DENIED: Inappropriate attire detected ({inappropriate_prob * 100:.2f}%).")
-      status = "denied"
+        # attire is inappropriate
+        print(f"DENIED: Inappropriate attire detected ({inappropriate_prob * 100:.2f}%).")
+        status = "non_compliant"
     else:
-      # attire is appropriate
-      print(f"APPROVED: Compliant attire ({appropriate_prob * 100:.2f}%).")
-
-    approved = bool(appropriate_prob > confidence_threshold)
+        # attire is appropriate
+        print(f"APPROVED: Compliant attire ({appropriate_prob * 100:.2f}%).")
+        status = "compliant"
 
     cached_scan_result = {"status": status, "confidence": float(highest_confidence * 100)}
 

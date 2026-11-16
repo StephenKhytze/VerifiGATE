@@ -2,8 +2,11 @@
 
 namespace App\Services\IdScan;
 
-/** The uniform checker module will implement this when it exists. */
+use App\Models\Student;
+
+/** The uniform checker module implements this. */
 interface UniformProvider
 {
-    public function current(): UniformResult;
+    public function current(?Student $student = null): UniformResult;
 }
+

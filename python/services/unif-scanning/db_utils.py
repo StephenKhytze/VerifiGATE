@@ -41,7 +41,8 @@ def get_student_attire_condition(student_number):
       print(f"Active exemption found: {exemption['exemption_name']}")
       return exemption["exemption_name"]
     else:
-      return f"Standard_{student["sex"]}"
+      sex = str(student.get("sex") or "male").upper()
+      return f"Standard_{sex}"
 
   except mysql.connector.Error as err:
     print(f"Database error: {err}")

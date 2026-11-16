@@ -12,6 +12,7 @@ use App\Enums\Gate\VerificationMethod;
 use App\Models\Exemption;
 use App\Models\GateEvent;
 use App\Models\SchoolYear;
+use App\Models\Student;
 use Illuminate\Support\Facades\DB;
 
 final class ScanProcessor
@@ -69,17 +70,6 @@ final class ScanProcessor
 
         $isStudent = $id->type === PersonType::Student;
         [$decision, $uniform] = $this->evaluate($id);
-        $uniform = $isStudent ? $this->uniform->current() : new UniformResult(UniformStatus::Unavailable);
-        $exemptions = $isStudent
-            ? Exemption::with('type')->where('student_id', $personId)->whereDate('date', today())->get()
-            : collect();
-
-        $decision = $this->router->route(
-            $id,
-            $uniform,
-            $this->presence->isInside($id->type, $personId),
-            $exemptions
-        );
 
         $event = DB::transaction(function () use ($id, $decision, $uniform, $isStudent, $column, $personId, $attempt, $started) {
             $auto = $decision->status === GateStatus::Approved;
@@ -123,8 +113,9 @@ final class ScanProcessor
     {
         $personId = $id->model?->getKey();
         $isStudent = $id->type === PersonType::Student;
+        $student = ($isStudent && $id->model instanceof Student) ? $id->model : null;
 
-        $uniform = $isStudent ? $this->uniform->current() : new UniformResult(UniformStatus::Unavailable);
+        $uniform = $isStudent ? $this->uniform->current($student) : new UniformResult(UniformStatus::Unavailable);
         $exemptions = $isStudent
             ? Exemption::with('type')->where('student_id', $personId)->whereDate('date', today())->get()
             : collect();
