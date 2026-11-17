@@ -152,16 +152,23 @@ def make_crop(roi):
 
 # ---- cameras ----
 def open_camera(index):
-    cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)      # DirectShow backend (Windows)
+    cap = cv2.VideoCapture(index, cv2.CAP_MSMF)
     if not cap.isOpened():
         cap.release()
         return None
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_W)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_H)
+
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+
+    cap.set(cv2.CAP_PROP_FPS, 30)
+
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
     if FOCUS != "":
-        cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)              # autofocus off
-        cap.set(cv2.CAP_PROP_FOCUS, float(FOCUS))       # fixed focus value
+        cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+        cap.set(cv2.CAP_PROP_FOCUS, float(FOCUS))
     return cap
 
 
