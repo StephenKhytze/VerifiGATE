@@ -213,7 +213,10 @@ def submit(crop, attempt):
         print(f"[{time.strftime('%H:%M:%S')}] attempt {attempt} -> {body.get('result')}")   # never print card contents
         return body.get("result")
     except requests.RequestException as e:
-        print(f"[{time.strftime('%H:%M:%S')}] send failed: {e.__class__.__name__}")
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        text = getattr(getattr(e, "response", None), "text", "")
+        extra = f" (Status {status}: {text[:120]})" if status else ""
+        print(f"[{time.strftime('%H:%M:%S')}] send failed: {e.__class__.__name__}{extra}")
         return None
 
 
