@@ -4,9 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasPersonName;
 
 class Faculty extends Model
 {
     /** @use HasFactory<\Database\Factories\FacultyFactory> */
-    use HasFactory;
+    use HasFactory, HasPersonName;
 }

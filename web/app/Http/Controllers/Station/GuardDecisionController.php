@@ -8,17 +8,18 @@ use App\Enums\Gate\GateStatus;
 use App\Enums\Gate\PersonType;
 use App\Http\Controllers\Controller;
 use App\Models\GateEvent;
+use App\Services\Notifications\EntryNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class GuardDecisionController extends Controller
 {
-    public function __invoke(Request $request, GateEvent $event): JsonResponse
+    public function __invoke(Request $request, GateEvent $event, EntryNotifier $notifier): JsonResponse
     {
         $decision = $request->validate(['decision' => ['required', 'in:approve,deny']])['decision'];
 
-        return DB::transaction(function () use ($event, $decision, $request) {
+        $e = DB::transaction(function () use ($event, $decision, $request) {
             $e = GateEvent::lockForUpdate()->findOrFail($event->id);
 
             abort_unless($e->status === GateStatus::Pending, 409, 'Already decided');
@@ -40,7 +41,12 @@ class GuardDecisionController extends Controller
                 'decided_at' => now(),
             ]);
 
-            return response()->json(['status' => $e->status->value]);
+            return $e;
         });
+
+        // After the transaction has committed. A notification problem is reported, never shown to the guard.
+        $notifier->queueSafely($e);
+
+        return response()->json(['status' => $e->status->value]);
     }
 }

@@ -13,6 +13,7 @@ use App\Models\Exemption;
 use App\Models\GateEvent;
 use App\Models\SchoolYear;
 use Illuminate\Support\Facades\DB;
+use App\Services\Notifications\EntryNotifier;
 
 final class ScanProcessor
 {
@@ -22,6 +23,7 @@ final class ScanProcessor
         private ScanRouter $router,
         private UniformProvider $uniform,
         private PresenceService $presence,
+        private EntryNotifier $notifier,
     ) {
     }
 
@@ -114,6 +116,8 @@ final class ScanProcessor
 
             return $event;
         });
+
+        $this->notifier->queueSafely($event);
 
         return ['result' => $event->status->value, 'event_id' => $event->id];
     }
