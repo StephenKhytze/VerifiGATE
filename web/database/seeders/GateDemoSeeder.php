@@ -59,10 +59,12 @@ class GateDemoSeeder extends Seeder
         Employee::create(['employee_no' => 'EMP-9001', 'last_name' => 'BAUTISTA',
             'first_name' => 'RICARDO', 'middle_name' => 'S', 'office' => 'Registrar (DEMO)']);
 
-        $g = Guardian::create(['last_name' => 'DE GUZMAN', 'first_name' => 'ELENA', 'middle_name' => 'R']);
+        $g = Guardian::create(['last_name' => 'DE GUZMAN', 'first_name' => 'ELENA', 'middle_name' => 'R',
+            'mobile_number' => '09000000001']);   // FAKE number, demo only
         PickupAuthorization::create(['guardian_id' => $g->id,
             'student_id' => Student::where('student_number', 'H24-0137')->value('id'),
-            'relationship' => 'Mother']);
+            'relationship' => 'Mother',
+            'notify_on_entry' => true]);
 
         foreach (['Civilian', 'P.E. Uniform', 'Department Shirt'] as $n) {
             ExemptionType::create(['name' => $n]);

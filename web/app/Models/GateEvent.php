@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\SmsNotification;
 
 class GateEvent extends Model
 {
@@ -46,6 +47,11 @@ class GateEvent extends Model
     public function flags(): HasMany
     {
         return $this->hasMany(GateEventFlag::class);
+    }
+
+    public function smsNotifications(): HasMany
+    {
+        return $this->hasMany(SmsNotification::class);
     }
 
     /** The exit event that closes this entry (later stage). */
