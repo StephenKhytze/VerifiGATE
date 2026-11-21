@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace App\Enums\Gate;
 
-use Illuminate\Database\Eloquent\Model;
-
-class SmsStatus extends Model
+enum SmsStatus: string
 {
-    //
+    case Pending = 'pending';
+    case Sent = 'sent';
+    case Delivered = 'delivered';
+    case Failed = 'failed';
+    case Skipped = 'skipped';
 }

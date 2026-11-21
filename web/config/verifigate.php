@@ -29,5 +29,24 @@ return [
         'visitor_min_mean' => 0.6,
     ],
 
+    'notifications' => [
+        // mock | semaphore | off   (off = no notification rows are created or sent)
+        'driver' => env('NOTIFY_DRIVER', 'mock'),
+
+        // Mock outcome: delivered | sent | fail
+        'mock_result' => env('NOTIFY_MOCK_RESULT', 'delivered'),
+
+        // app.timezone is UTC, so message times and the Important panel use this zone
+        'timezone' => 'Asia/Manila',
+
+        // Seconds to wait before retry 1 and retry 2 (so 3 attempts in total)
+        'backoff' => [10, 60],
+
+        // Important panel: age before a stuck message becomes an alert, and the card cap
+        'unsent_after_minutes' => 2,
+        'unconfirmed_after_minutes' => 5,
+        'important_limit' => 20,
+    ],
+
     'crop_url' => env('CROP_URL', 'http://127.0.0.1:8003'),
 ];

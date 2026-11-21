@@ -24,7 +24,7 @@ return new class extends Migration
             $t->timestamp('sent_at')->nullable();
             $t->unique(['gate_event_id', 'guardian_id']);   // one message per guardian per entry
             $t->index(['status', 'created_at']);            // "Important" panel queries
-        });
+        });  
     }
 
     public function down(): void
