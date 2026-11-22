@@ -6,6 +6,8 @@ use App\Enums\Gate\GateStatus;
 use App\Enums\Gate\PersonType;
 use App\Models\GateEvent;
 use Illuminate\Support\Facades\Cache;
+use App\Enums\Gate\SmsStatus;
+use App\Models\SmsNotification;
 
 final class GateState
 {
@@ -36,11 +38,41 @@ final class GateState
             'mode' => $decided ? 'result' : ($current ? 'review' : 'idle'),
             'current' => $current ? $this->presenter->guardCard($current) : null,
             'pending_count' => (clone $pendingQuery)->count(),
-            'important' => [],   // SMS unsent/unconfirmed: filled when the SMS module exists
+            'important' => $this->important(),
             'recent' => GateEvent::with(GatePresenter::with())
                 ->latest('scanned_at')->limit(30)->get()
                 ->map(fn ($e) => $this->presenter->logCard($e))->values()->all(),
         ];
+    }
+
+    /** SMS alerts for today only. Skipped rows are a label on the guard card, never an alert. */
+    private function important(): array
+    {
+        $cfg = config('verifigate.notifications');
+
+        // app.timezone is UTC, so "today" is Manila midnight converted back to UTC
+        $todayStart = now($cfg['timezone'])->startOfDay()->setTimezone(config('app.timezone'));
+        $unsentBefore = now()->subMinutes($cfg['unsent_after_minutes']);
+        $unconfirmedBefore = now()->subMinutes($cfg['unconfirmed_after_minutes']);
+
+        return SmsNotification::with('gateEvent.student')
+            ->where('created_at', '>=', $todayStart)
+            ->where(function ($q) use ($unsentBefore, $unconfirmedBefore) {
+                $q->where('status', SmsStatus::Failed->value)
+                    ->orWhere(fn ($w) => $w->where('status', SmsStatus::Pending->value)
+                        ->where('created_at', '<', $unsentBefore))
+                    ->orWhere(fn ($w) => $w->where('status', SmsStatus::Sent->value)
+                        ->where('sent_at', '<', $unconfirmedBefore));
+            })
+            ->orderByDesc('id')
+            ->get()
+            ->unique('gate_event_id')
+            ->take((int) $cfg['important_limit'])
+            ->map(fn (SmsNotification $n) => $n->status === SmsStatus::Sent
+                ? $this->presenter->smsAlertCard($n->gateEvent, 'SMS Unconfirmed', 'clock')
+                : $this->presenter->smsAlertCard($n->gateEvent, 'SMS Unsent', 'x'))
+            ->values()
+            ->all();
     }
 
     /** Data for the student-facing screen. Never includes flag reasons. */

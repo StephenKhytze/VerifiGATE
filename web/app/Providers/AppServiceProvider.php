@@ -12,6 +12,10 @@ use Illuminate\Validation\Rules\Password;
 use App\Services\Notifications\MockSmsGateway;
 use App\Services\Notifications\SemaphoreSmsGateway;
 use App\Services\Notifications\SmsGateway;
+use App\Services\Reports\FacultyStudentScope;
+use App\Services\Reports\MockFacultyStudentScope;
+use App\Services\Reports\AbsenceProvider;
+use App\Services\Reports\MockAbsenceProvider;
 use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
                 'Unsupported NOTIFY_DRIVER: ' . config('verifigate.notifications.driver')
             ),
         });
+        $this->app->bind(FacultyStudentScope::class, MockFacultyStudentScope::class);
+        $this->app->bind(AbsenceProvider::class, MockAbsenceProvider::class);
     }
 
     /**

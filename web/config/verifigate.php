@@ -48,5 +48,31 @@ return [
         'important_limit' => 20,
     ],
 
+    'reports' => [
+        // School days are Manila days; queries convert to app.timezone
+        'timezone' => 'Asia/Manila',
+
+        // TEMPORARY test control until class schedules exist:
+        // on_time = every entry counts as Present, late = every entry counts as Late
+        'attendance_mode' => env('ATTENDANCE_MODE', 'on_time'),
+
+        // ISO weekdays that are school days per level (1 = Monday ... 7 = Sunday)
+        'school_days' => [
+            'junior_high' => [1, 2, 3, 4, 5],
+            'senior_high' => [1, 2, 3, 4, 5],
+            'college' => [1, 2, 3, 4, 5, 6],
+        ],
+
+        // Flag reasons that count as incidents (chart and Uniform Violations card)
+        'incident_flags' => ['uniform_non_compliant'],
+
+        // Stand-ins until the accounts module defines roles and class assignments
+        'mock' => [
+            'role' => env('REPORTS_MOCK_ROLE', 'faculty'),
+            'faculty' => ['name' => 'Sir Kyle', 'title' => 'Faculty', 'program' => 'BSIT', 'year' => 1],
+            'admin' => ['name' => 'Ms. Schuyler', 'title' => 'Admin'],
+        ],
+    ],
+    
     'crop_url' => env('CROP_URL', 'http://127.0.0.1:8003'),
 ];

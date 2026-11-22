@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/gate_station.php'));
             Route::middleware(['web', 'auth'])->prefix('gate')
                 ->group(base_path('routes/gate_guard.php'));
+            Route::middleware(['web', 'auth'])->prefix('dashboard')
+                ->group(base_path('routes/reports.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
