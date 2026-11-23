@@ -7,6 +7,7 @@ use App\Enums\Gate\GateStatus;
 use App\Enums\Gate\PersonType;
 use App\Enums\Reports\AttendanceMode;
 use App\Support\SchoolClock;
+use App\Models\Student;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -57,6 +58,34 @@ final class AttendanceReport
         })->values()->all();
 
         return ['rows' => $rows, 'total' => (clone $students)->count()];
+    }
+
+    /**
+     * Rows for exactly these students, in the order given (used by the print ranking).
+     *
+     * @param list<int> $ids
+     * @return list<array<string, mixed>>
+     */
+    public function rowsFor(array $ids, ReportPeriod $period, AttendanceMode $mode): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $students = Student::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $attended = $this->attendedDays(Student::query()->whereIn('students.id', $ids), $period);
+
+        return array_map(function (int $id) use ($students, $attended, $mode) {
+            $days = $attended[$id] ?? 0;
+
+            return [
+                'id' => $id,
+                'name' => $students[$id]->displayName(),
+                'student_number' => $students[$id]->student_number,
+                'present' => $mode === AttendanceMode::OnTime ? $days : 0,
+                'late' => $mode === AttendanceMode::Late ? $days : 0,
+            ];
+        }, $ids);
     }
 
     /**

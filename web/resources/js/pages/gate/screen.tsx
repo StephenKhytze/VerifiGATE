@@ -14,7 +14,13 @@ const TINT: Record<ScreenState['screen'], string> = {
     flagged: 'bg-[#C52F37]/55',
 };
 
-function Badge({ color, children }: { color: string; children: React.ReactNode }) {
+function Badge({
+    color,
+    children,
+}: {
+    color: string;
+    children: React.ReactNode;
+}) {
     return (
         <div
             className="flex h-[16vw] w-[16vw] items-center justify-center rounded-full"
@@ -27,14 +33,20 @@ function Badge({ color, children }: { color: string; children: React.ReactNode }
 
 export default function GateScreen() {
     const { data } = usePoll<ScreenState>('/gate/screen-state', 500);
-    const s: ScreenState = data ?? { screen: 'idle', given_names: null, time: null };
+    const s: ScreenState = data ?? {
+        screen: 'idle',
+        given_names: null,
+        time: null,
+    };
     const showTime = s.screen === 'welcome' || s.screen === 'visitor_welcome';
 
     return (
-        <div className="relative flex h-screen w-screen select-none flex-col items-center overflow-hidden bg-gradient-to-b from-neutral-600 to-neutral-900 text-white">
+        <div className="relative flex h-screen w-screen flex-col items-center overflow-hidden bg-gradient-to-b from-neutral-600 to-neutral-900 text-white select-none">
             <Head title="VerifiGATE" />
             {/* TODO: the live uniform-camera video goes here, behind the tint */}
-            <div className={`absolute inset-0 transition-colors duration-300 ${TINT[s.screen]}`} />
+            <div
+                className={`absolute inset-0 transition-colors duration-300 ${TINT[s.screen]}`}
+            />
             {s.screen === 'scanning' && (
                 <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-[#2B8132] to-transparent" />
             )}
@@ -54,40 +66,66 @@ export default function GateScreen() {
             <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-[5vh] text-center">
                 {s.screen === 'idle' && (
                     <>
-                        <h1 className="text-[7vw] font-bold">Please present your ID</h1>
+                        <h1 className="text-[7vw] font-bold">
+                            Please present your ID
+                        </h1>
                         <p className="text-[4vw]">Hold it up to the scanner</p>
-                        <Contact className="h-[16vw] w-[16vw] animate-pulse" strokeWidth={1.5} />
+                        <Contact
+                            className="h-[16vw] w-[16vw] animate-pulse"
+                            strokeWidth={1.5}
+                        />
                     </>
                 )}
                 {s.screen === 'scanning' && (
                     <>
-                        <h1 className="text-[7vw] font-bold">Scanning and verifying...</h1>
-                        <Contact className="h-[16vw] w-[16vw]" strokeWidth={1.5} />
+                        <h1 className="text-[7vw] font-bold">
+                            Scanning and verifying...
+                        </h1>
+                        <Contact
+                            className="h-[16vw] w-[16vw]"
+                            strokeWidth={1.5}
+                        />
                     </>
                 )}
                 {s.screen === 'welcome' && (
                     <>
                         <h1 className="text-[7vw] font-light">
-                            Welcome, <span className="font-extrabold">{s.given_names}</span>!
+                            Welcome,{' '}
+                            <span className="font-extrabold">
+                                {s.given_names}
+                            </span>
+                            !
                         </h1>
                         <Badge color={GREEN}>
-                            <Check className="h-[9vw] w-[9vw]" strokeWidth={3} />
+                            <Check
+                                className="h-[9vw] w-[9vw]"
+                                strokeWidth={3}
+                            />
                         </Badge>
                     </>
                 )}
                 {s.screen === 'visitor_welcome' && (
                     <>
-                        <h1 className="text-[7vw] font-light">Welcome, visitor!</h1>
+                        <h1 className="text-[7vw] font-light">
+                            Welcome, visitor!
+                        </h1>
                         <Badge color={GREEN}>
-                            <Check className="h-[9vw] w-[9vw]" strokeWidth={3} />
+                            <Check
+                                className="h-[9vw] w-[9vw]"
+                                strokeWidth={3}
+                            />
                         </Badge>
                     </>
                 )}
                 {s.screen === 'flagged' && (
                     <>
                         <div>
-                            <h1 className="text-[8vw] font-extrabold">Flagged</h1>
-                            <p className="mt-[1vh] text-[6vw] font-light">Please step aside.</p>
+                            <h1 className="text-[8vw] font-extrabold">
+                                Flagged
+                            </h1>
+                            <p className="mt-[1vh] text-[6vw] font-light">
+                                Please step aside.
+                            </p>
                         </div>
                         <Badge color={RED}>
                             <X className="h-[9vw] w-[9vw]" strokeWidth={3} />

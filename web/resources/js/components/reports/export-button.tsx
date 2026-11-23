@@ -1,6 +1,7 @@
 import { NAVY } from '@/components/reports/colors';
 
-const BASE = 'inline-flex h-14 items-center rounded-2xl px-12 text-2xl font-semibold text-white shadow-md';
+const BASE =
+    'inline-flex h-14 items-center rounded-2xl px-12 text-2xl font-semibold text-white shadow-md';
 
 export default function ExportButton({ href }: { href?: string }) {
     if (!href) {
@@ -18,7 +19,13 @@ export default function ExportButton({ href }: { href?: string }) {
     }
 
     return (
-        <a href={href} target="_blank" rel="noreferrer" className={BASE} style={{ backgroundColor: NAVY }}>
+        <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className={BASE}
+            style={{ backgroundColor: NAVY }}
+        >
             Export
         </a>
     );

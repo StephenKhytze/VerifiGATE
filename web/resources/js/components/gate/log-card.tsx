@@ -10,7 +10,13 @@ const TONE: Record<LogCard['tone'], string> = {
 };
 const ICON = { exit: LogOut, clock: Clock, check: Check, shirt: Shirt, x: X };
 
-export default function LogCardView({ card, onOpen }: { card: LogCard; onOpen: (id: number) => void }) {
+export default function LogCardView({
+    card,
+    onOpen,
+}: {
+    card: LogCard;
+    onOpen: (id: number) => void;
+}) {
     const Icon = ICON[card.icon];
     return (
         <div
@@ -19,7 +25,10 @@ export default function LogCardView({ card, onOpen }: { card: LogCard; onOpen: (
         >
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 text-sm">
-                    <Icon className="h-4 w-4" style={{ color: TONE[card.tone] }} />
+                    <Icon
+                        className="h-4 w-4"
+                        style={{ color: TONE[card.tone] }}
+                    />
                     {card.label}
                 </div>
                 <div className="truncate text-lg font-bold">{card.name}</div>

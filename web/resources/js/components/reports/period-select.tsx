@@ -13,7 +13,11 @@ type Props = {
     disabled?: boolean;
 };
 
-export default function PeriodSelect({ value, onChange, disabled = false }: Props) {
+export default function PeriodSelect({
+    value,
+    onChange,
+    disabled = false,
+}: Props) {
     return (
         <label className="relative inline-block">
             <span className="sr-only">Report period</span>

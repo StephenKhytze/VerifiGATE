@@ -4,3 +4,4 @@ export const RED = '#C52F37';
 export const GRAY = '#737373';
 export const NAVY = '#15325A';
 export const CHART_BLUE = '#1B8FC6';
+export const INK = '#111111';

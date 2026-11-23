@@ -20,7 +20,10 @@ const UNIFORM = {
 
 const RESULT = {
     approved: { text: 'Entry approved', color: GREEN },
-    approved_flagged_uniform: { text: 'Approved with flagged uniform', color: ORANGE },
+    approved_flagged_uniform: {
+        text: 'Approved with flagged uniform',
+        color: ORANGE,
+    },
     flagged: { text: 'Flagged: entry not allowed', color: RED },
     pending: { text: '', color: '#737373' },
 } as const;
@@ -54,9 +57,16 @@ function Review({
         setBusy(true);
         setMessage(null);
         try {
-            await api(`/gate/events/${card.id}/decision`, { method: 'POST', body: JSON.stringify({ decision }) });
+            await api(`/gate/events/${card.id}/decision`, {
+                method: 'POST',
+                body: JSON.stringify({ decision }),
+            });
         } catch (e) {
-            setMessage(e instanceof ApiError ? e.message : 'Could not save the decision.');
+            setMessage(
+                e instanceof ApiError
+                    ? e.message
+                    : 'Could not save the decision.',
+            );
         } finally {
             setBusy(false);
         }
@@ -99,11 +109,23 @@ function Review({
 
                 {card.uniform && (
                     <div className="mt-3 text-lg">
-                        <span className="mr-2 inline-block h-3 w-3 rounded-full" style={{ backgroundColor: UNIFORM[card.uniform.status].color }} />
+                        <span
+                            className="mr-2 inline-block h-3 w-3 rounded-full"
+                            style={{
+                                backgroundColor:
+                                    UNIFORM[card.uniform.status].color,
+                            }}
+                        />
                         <b>Uniform: </b>
-                        <span style={{ color: UNIFORM[card.uniform.status].color }}>
+                        <span
+                            style={{
+                                color: UNIFORM[card.uniform.status].color,
+                            }}
+                        >
                             {UNIFORM[card.uniform.status].text}
-                            {card.uniform.confidence !== null ? ` (${card.uniform.confidence.toFixed(2)}%)` : ''}
+                            {card.uniform.confidence !== null
+                                ? ` (${card.uniform.confidence.toFixed(2)}%)`
+                                : ''}
                         </span>
                         <div>
                             <b>Exceptions: </b>
@@ -116,7 +138,9 @@ function Review({
                     <div className="mt-3 text-lg">
                         <b>Visitor is authorized to pick-up:</b>
                         {card.pickup.length === 0 ? (
-                            <div style={{ color: ORANGE }}>Not on any pickup list</div>
+                            <div style={{ color: ORANGE }}>
+                                Not on any pickup list
+                            </div>
                         ) : (
                             card.pickup.map((n) => <div key={n}>{n}</div>)
                         )}
@@ -124,7 +148,10 @@ function Review({
                 )}
 
                 {card.flags.length > 0 && (
-                    <div className="mt-4 rounded-xl border-2 p-3" style={{ borderColor: ORANGE }}>
+                    <div
+                        className="mt-4 rounded-xl border-2 p-3"
+                        style={{ borderColor: ORANGE }}
+                    >
                         <div className="font-bold">Needs your attention:</div>
                         <ul className="list-disc pl-5">
                             {card.flags.map((f) => (
@@ -184,7 +211,11 @@ function Review({
                         {visitor && (
                             <button
                                 type="button"
-                                onClick={() => setMessage('The turnstile is not connected yet.')}
+                                onClick={() =>
+                                    setMessage(
+                                        'The turnstile is not connected yet.',
+                                    )
+                                }
                                 className="mt-4 h-14 w-full rounded-2xl text-xl font-bold text-white shadow"
                                 style={{ backgroundColor: GREEN }}
                             >
@@ -198,16 +229,28 @@ function Review({
                                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 py-3 text-lg"
                             >
                                 <Search className="h-5 w-5" />
-                                {card.can_approve ? 'Wrong person? Search' : 'Identify the person'}
+                                {card.can_approve
+                                    ? 'Wrong person? Search'
+                                    : 'Identify the person'}
                             </button>
                         )}
-                        {!card.can_approve && <p className="mt-2 text-neutral-600">Identify the person before approving.</p>}
+                        {!card.can_approve && (
+                            <p className="mt-2 text-neutral-600">
+                                Identify the person before approving.
+                            </p>
+                        )}
                     </>
                 )}
 
-                {message && <p className="mt-3" style={{ color: RED }}>{message}</p>}
+                {message && (
+                    <p className="mt-3" style={{ color: RED }}>
+                        {message}
+                    </p>
+                )}
                 {pending > 1 && mode === 'review' && (
-                    <p className="mt-3 text-neutral-600">{pending - 1} more waiting after this one.</p>
+                    <p className="mt-3 text-neutral-600">
+                        {pending - 1} more waiting after this one.
+                    </p>
                 )}
             </section>
         </div>
@@ -237,12 +280,17 @@ export default function GateGuard() {
                         className="flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-lg"
                     >
                         <Search className="h-5 w-5" />
-                        {current?.needs_decision ? 'Search' : 'Lost ID / manual entry'}
+                        {current?.needs_decision
+                            ? 'Search'
+                            : 'Lost ID / manual entry'}
                     </button>
                 </div>
 
                 {error && (
-                    <div className="mt-4 rounded-lg p-3 text-white" style={{ backgroundColor: RED }}>
+                    <div
+                        className="mt-4 rounded-lg p-3 text-white"
+                        style={{ backgroundColor: RED }}
+                    >
                         Connection to the server lost. Retrying...
                     </div>
                 )}
@@ -250,7 +298,9 @@ export default function GateGuard() {
                 {!current ? (
                     <div className="flex h-[70vh] flex-col items-center justify-center text-center">
                         <h1 className="text-5xl font-bold">Idle Mode</h1>
-                        <p className="mt-8 text-4xl font-light">No students to display</p>
+                        <p className="mt-8 text-4xl font-light">
+                            No students to display
+                        </p>
                     </div>
                 ) : (
                     <Review
@@ -266,9 +316,17 @@ export default function GateGuard() {
             <aside className="w-[32%] min-w-[360px] overflow-y-auto bg-neutral-100 p-6">
                 <h2 className="text-3xl font-bold">Important</h2>
                 <div className="mt-4 space-y-3">
-                    {shownImportant.length === 0 && <p className="text-neutral-500">Nothing needs attention.</p>}
+                    {shownImportant.length === 0 && (
+                        <p className="text-neutral-500">
+                            Nothing needs attention.
+                        </p>
+                    )}
                     {shownImportant.map((c) => (
-                        <LogCardView key={c.id} card={c} onOpen={setHistoryFor} />
+                        <LogCardView
+                            key={c.id}
+                            card={c}
+                            onOpen={setHistoryFor}
+                        />
                     ))}
                 </div>
                 {important.length > 2 && (
@@ -284,14 +342,26 @@ export default function GateGuard() {
                 <h2 className="mt-10 text-3xl font-bold">Student Logs</h2>
                 <div className="mt-4 space-y-3">
                     {(data?.recent ?? []).map((c) => (
-                        <LogCardView key={c.id} card={c} onOpen={setHistoryFor} />
+                        <LogCardView
+                            key={c.id}
+                            card={c}
+                            onOpen={setHistoryFor}
+                        />
                     ))}
                 </div>
             </aside>
 
-            {historyFor !== null && <HistoryModal eventId={historyFor} onClose={() => setHistoryFor(null)} />}
+            {historyFor !== null && (
+                <HistoryModal
+                    eventId={historyFor}
+                    onClose={() => setHistoryFor(null)}
+                />
+            )}
             {searching && (
-                <SearchPanel target={current?.needs_decision ? current : null} onClose={() => setSearching(false)} />
+                <SearchPanel
+                    target={current?.needs_decision ? current : null}
+                    onClose={() => setSearching(false)}
+                />
             )}
         </div>
     );

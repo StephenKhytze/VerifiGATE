@@ -8,9 +8,18 @@ type Props = {
     sample?: boolean;
 };
 
-export default function StatCard({ title, subtitle, value, color, sample = false }: Props) {
+export default function StatCard({
+    title,
+    subtitle,
+    value,
+    color,
+    sample = false,
+}: Props) {
     return (
-        <div className="rounded-2xl border-2 bg-white px-6 py-4" style={{ borderColor: color }}>
+        <div
+            className="rounded-2xl border-2 bg-white px-6 py-4"
+            style={{ borderColor: color }}
+        >
             <div className="text-2xl font-semibold" style={{ color }}>
                 {title}
             </div>

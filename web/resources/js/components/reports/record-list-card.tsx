@@ -25,13 +25,20 @@ export default function RecordListCard({ rows, total }: Props) {
                 <tbody>
                     {rows.length === 0 && (
                         <tr>
-                            <td colSpan={5} className="py-6 text-center" style={{ color: GRAY }}>
+                            <td
+                                colSpan={5}
+                                className="py-6 text-center"
+                                style={{ color: GRAY }}
+                            >
                                 No students to show.
                             </td>
                         </tr>
                     )}
                     {rows.map((row) => (
-                        <tr key={row.id} className="border-b border-neutral-300">
+                        <tr
+                            key={row.id}
+                            className="border-b border-neutral-300"
+                        >
                             <td className="py-4">{row.name}</td>
                             <td className="py-4">{row.student_number}</td>
                             <td className="py-4">{row.present}</td>

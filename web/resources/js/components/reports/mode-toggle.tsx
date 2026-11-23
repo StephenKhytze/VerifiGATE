@@ -12,7 +12,11 @@ type Props = {
     disabled?: boolean;
 };
 
-export default function ModeToggle({ value, onChange, disabled = false }: Props) {
+export default function ModeToggle({
+    value,
+    onChange,
+    disabled = false,
+}: Props) {
     return (
         <div className="flex items-center gap-2">
             <span className="text-sm" style={{ color: GRAY }}>
@@ -31,7 +35,14 @@ export default function ModeToggle({ value, onChange, disabled = false }: Props)
                         aria-pressed={value === option.value}
                         onClick={() => onChange(option.value)}
                         className="h-10 px-4 text-lg disabled:opacity-60"
-                        style={value === option.value ? { backgroundColor: option.color, color: '#fff' } : undefined}
+                        style={
+                            value === option.value
+                                ? {
+                                      backgroundColor: option.color,
+                                      color: '#fff',
+                                  }
+                                : undefined
+                        }
                     >
                         {option.label}
                     </button>

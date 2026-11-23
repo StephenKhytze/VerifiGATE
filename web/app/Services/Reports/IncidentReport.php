@@ -17,6 +17,38 @@ final class IncidentReport
      */
     public function series(Builder $students, ReportPeriod $period): array
     {
+        $perBucket = [];
+        foreach ($this->incidents($students, $period) as $incident) {
+            $perBucket[$incident['bucket']] = ($perBucket[$incident['bucket']] ?? 0) + 1;
+        }
+
+        return [
+            'series' => array_map(
+                fn (array $bucket) => $bucket + ['value' => $perBucket[$bucket['key']] ?? 0],
+                $period->buckets(),
+            ),
+            'total' => array_sum($perBucket),
+        ];
+    }
+
+    /**
+     * Incident days per student id. Same rule as the chart, so the totals always agree.
+     *
+     * @return array<int, int>
+     */
+    public function perStudent(Builder $students, ReportPeriod $period): array
+    {
+        $perStudent = [];
+        foreach ($this->incidents($students, $period) as $incident) {
+            $perStudent[$incident['student_id']] = ($perStudent[$incident['student_id']] ?? 0) + 1;
+        }
+
+        return $perStudent;
+    }
+
+    /** One entry per student per day: the earliest flagged entry decides the bucket. */
+    private function incidents(Builder $students, ReportPeriod $period): array
+    {
         $rows = DB::table('gate_event_flags')
             ->join('gate_events', 'gate_events.id', '=', 'gate_event_flags.gate_event_id')
             ->where('gate_events.direction', Direction::In->value)
@@ -29,7 +61,7 @@ final class IncidentReport
             ->get(['gate_events.student_id', 'gate_events.scanned_at']);
 
         $counted = [];
-        $perBucket = [];
+        $incidents = [];
         foreach ($rows as $row) {
             $local = SchoolClock::fromDatabase($row->scanned_at);
             $bucket = $period->bucketKey($local);
@@ -40,15 +72,9 @@ final class IncidentReport
             }
 
             $counted[$once] = true;
-            $perBucket[$bucket] = ($perBucket[$bucket] ?? 0) + 1;
+            $incidents[] = ['student_id' => (int) $row->student_id, 'bucket' => $bucket];
         }
 
-        return [
-            'series' => array_map(
-                fn (array $bucket) => $bucket + ['value' => $perBucket[$bucket['key']] ?? 0],
-                $period->buckets(),
-            ),
-            'total' => array_sum($perBucket),
-        ];
+        return $incidents;
     }
 }

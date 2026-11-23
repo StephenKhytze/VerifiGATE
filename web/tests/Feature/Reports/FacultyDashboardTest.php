@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
+    $this->withoutVite();
+
     config([
         'verifigate.reports.attendance_mode' => 'on_time',
         'verifigate.reports.mock.faculty' => ['name' => 'Sir Kyle', 'title' => 'Faculty', 'program' => 'BSIT', 'year' => 1],
@@ -31,6 +33,8 @@ it('sends guests to the login page', function () {
 });
 
 it('redirects /dashboard to the faculty dashboard', function () {
+    config(['verifigate.reports.mock.role' => 'faculty']);
+
     $this->actingAs(fdUser())->get('/dashboard')->assertRedirect('/dashboard/faculty');
 });
 

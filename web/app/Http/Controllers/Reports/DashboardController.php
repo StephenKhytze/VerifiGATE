@@ -14,10 +14,12 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    /** Where /dashboard sends people. The admin dashboard joins this in Stage 4. */
+    /** Where /dashboard sends people: the mock role until the accounts module defines real roles. */
     public function index(): RedirectResponse
     {
-        return redirect()->route('reports.faculty');
+        return redirect()->route(
+            config('verifigate.reports.mock.role') === 'admin' ? 'reports.admin' : 'reports.faculty'
+        );
     }
 
     public function faculty(Request $request, DashboardReports $reports): Response
@@ -28,6 +30,30 @@ class DashboardController extends Controller
             'viewer' => $this->viewer('faculty'),
             'dashboard' => $reports->faculty($period, $this->mode($request)),
             'testControls' => $this->testControlsEnabled(),
+        ]);
+    }
+
+    public function admin(Request $request, DashboardReports $reports): Response
+    {
+        $period = ReportPeriod::for(Period::fromInput($this->queryString($request, 'period')));
+        $mode = $this->mode($request);
+
+        return Inertia::render('reports/admin', [
+            'viewer' => $this->viewer('admin'),
+            'testControls' => $this->testControlsEnabled(),
+            // Closures are only evaluated when requested, so the 30-second occupancy poll
+            // does not recompute the whole report.
+            'dashboard' => fn () => $reports->admin($period, $mode),
+            'occupancy' => fn () => $reports->occupancy(),
+        ]);
+    }
+
+    public function print(Request $request, DashboardReports $reports, string $role): Response
+    {
+        $period = ReportPeriod::for(Period::fromInput($this->queryString($request, 'period')));
+
+        return Inertia::render('reports/print', [
+            'report' => $reports->printable($role, $period, $this->mode($request), $this->viewer($role)),
         ]);
     }
 

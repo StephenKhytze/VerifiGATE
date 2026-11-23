@@ -18,7 +18,10 @@ export function usePoll<T>(url: string, interval = 500) {
                     setError(false);
                 }
             } catch (e) {
-                if (e instanceof ApiError && (e.status === 401 || e.status === 419)) {
+                if (
+                    e instanceof ApiError &&
+                    (e.status === 401 || e.status === 419)
+                ) {
                     window.location.reload(); // session expired: go back to the login page
                     return;
                 }

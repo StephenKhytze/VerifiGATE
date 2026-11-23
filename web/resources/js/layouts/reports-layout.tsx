@@ -16,49 +16,76 @@ export default function ReportsLayout({ children }: { children: ReactNode }) {
     const page = usePage<{ viewer: Viewer }>();
     const { viewer } = page.props;
     const path = page.url.split('?')[0];
-    const items = NAV[viewer.role];
+    const groups = NAV[viewer.role];
     const row = 'flex h-14 w-full items-center gap-3 px-8 text-xl';
 
     return (
-        <div className="flex min-h-screen bg-[#F2F2F2] text-black" style={{ fontFamily: FONT }}>
+        <div
+            className="flex min-h-screen bg-[#F2F2F2] text-black"
+            style={{ fontFamily: FONT }}
+        >
             <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-white shadow-[6px_0_16px_rgba(0,0,0,0.08)] md:flex">
                 <div className="px-8 pt-10 pb-8 text-4xl leading-none">
                     <span className="font-light">Verifi</span>
                     <span className="font-bold">GATE</span>
                 </div>
 
-                <nav className="flex-1" aria-label="Main">
-                    {items.map(({ title, icon: Icon, href }) =>
-                        href ? (
-                            <Link
-                                key={title}
-                                href={href}
-                                className={row}
-                                style={path === href ? { backgroundColor: GREEN, color: '#fff' } : undefined}
-                            >
-                                <Icon className="size-5" />
-                                {title}
-                            </Link>
-                        ) : (
-                            <span
-                                key={title}
-                                aria-disabled="true"
-                                title="Coming soon"
-                                className={`${row} cursor-not-allowed text-neutral-400`}
-                            >
-                                <Icon className="size-5" />
-                                {title}
-                            </span>
-                        ),
-                    )}
+                <nav className="flex-1 overflow-y-auto" aria-label="Main">
+                    {groups.map((group, index) => (
+                        <div key={group.heading ?? index}>
+                            {group.heading && (
+                                <p className="px-8 pt-6 pb-2 text-2xl">
+                                    {group.heading}
+                                </p>
+                            )}
+                            {group.items.map(({ title, icon: Icon, href }) =>
+                                href ? (
+                                    <Link
+                                        key={title}
+                                        href={href}
+                                        className={row}
+                                        style={
+                                            path === href
+                                                ? {
+                                                      backgroundColor: GREEN,
+                                                      color: '#fff',
+                                                  }
+                                                : undefined
+                                        }
+                                    >
+                                        <Icon className="size-5" />
+                                        {title}
+                                    </Link>
+                                ) : (
+                                    <span
+                                        key={title}
+                                        aria-disabled="true"
+                                        title="Coming soon"
+                                        className={`${row} cursor-not-allowed text-neutral-400`}
+                                    >
+                                        <Icon className="size-5" />
+                                        {title}
+                                    </span>
+                                ),
+                            )}
+                        </div>
+                    ))}
                 </nav>
 
                 <div className="border-t border-neutral-200">
                     <div className="flex items-center gap-3 px-6 py-4">
-                        <CircleUser className="size-10 shrink-0" strokeWidth={1.5} />
+                        <CircleUser
+                            className="size-10 shrink-0"
+                            strokeWidth={1.5}
+                        />
                         <div className="min-w-0">
-                            <div className="truncate text-lg leading-tight font-semibold">{viewer.name}</div>
-                            <div className="text-sm leading-tight" style={{ color: GRAY }}>
+                            <div className="truncate text-lg leading-tight font-semibold">
+                                {viewer.name}
+                            </div>
+                            <div
+                                className="text-sm leading-tight"
+                                style={{ color: GRAY }}
+                            >
                                 {viewer.title}
                             </div>
                         </div>
@@ -78,7 +105,9 @@ export default function ReportsLayout({ children }: { children: ReactNode }) {
                 </div>
             </aside>
 
-            <main className="min-w-0 flex-1 px-6 py-6 lg:px-10">{children}</main>
+            <main className="min-w-0 flex-1 px-6 py-6 lg:px-10">
+                {children}
+            </main>
         </div>
     );
 }

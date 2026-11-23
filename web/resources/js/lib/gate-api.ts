@@ -11,7 +11,11 @@ export type GuardCard = {
     time: string;
     scan_attempts: number;
     uniform: {
-        status: 'compliant' | 'non_compliant' | 'low_confidence' | 'unavailable';
+        status:
+            | 'compliant'
+            | 'non_compliant'
+            | 'low_confidence'
+            | 'unavailable';
         confidence: number | null;
     } | null;
     exceptions: string;
