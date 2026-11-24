@@ -1,14 +1,15 @@
-import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head } from '@inertiajs/react';
 import { GREEN, ORANGE, RED } from '@/components/reports/colors';
 import ExportButton from '@/components/reports/export-button';
 import IncidentsChart from '@/components/reports/incidents-chart';
 import ModeToggle from '@/components/reports/mode-toggle';
 import PeriodSelect from '@/components/reports/period-select';
 import RecordListCard from '@/components/reports/record-list-card';
+import ReportStatus from '@/components/reports/report-status';
 import StatCard from '@/components/reports/stat-card';
 import ViewAsSwitch from '@/components/reports/view-as-switch';
-import type { AttendanceMode, DashboardData, PeriodKey } from '@/types/reports';
+import { useReportVisit } from '@/hooks/use-report-visit';
+import type { DashboardData } from '@/types/reports';
 
 type Props = {
     dashboard: DashboardData;
@@ -16,26 +17,11 @@ type Props = {
 };
 
 export default function FacultyDashboard({ dashboard, testControls }: Props) {
-    const [loading, setLoading] = useState(false);
     const { period, cards, chart, records } = dashboard;
-
-    function visit(next: { period?: PeriodKey; mode?: AttendanceMode }) {
-        router.get(
-            '/dashboard/faculty',
-            {
-                period: next.period ?? period.key,
-                mode: next.mode ?? dashboard.mode,
-            },
-            {
-                only: ['dashboard'],
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-                onStart: () => setLoading(true),
-                onFinish: () => setLoading(false),
-            },
-        );
-    }
+    const { loading, failed, visit } = useReportVisit('/dashboard/faculty', {
+        period: period.key,
+        mode: dashboard.mode,
+    });
 
     return (
         <>
@@ -43,7 +29,7 @@ export default function FacultyDashboard({ dashboard, testControls }: Props) {
 
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <h1 className="text-3xl font-bold">Faculty Dashboard</h1>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     {testControls && (
                         <ViewAsSwitch
                             role="faculty"
@@ -65,6 +51,8 @@ export default function FacultyDashboard({ dashboard, testControls }: Props) {
                     />
                 </div>
             </div>
+
+            <ReportStatus loading={loading} failed={failed} />
 
             <div
                 className="mt-8 space-y-8 transition-opacity"
@@ -111,7 +99,9 @@ export default function FacultyDashboard({ dashboard, testControls }: Props) {
                 </section>
 
                 <div className="flex justify-end border-b border-neutral-300 pb-8">
-                    <ExportButton href={`/dashboard/faculty/print?period=${period.key}&mode=${dashboard.mode}`} />
+                    <ExportButton
+                        href={`/dashboard/faculty/print?period=${period.key}&mode=${dashboard.mode}`}
+                    />
                 </div>
 
                 <RecordListCard rows={records.rows} total={records.total} />

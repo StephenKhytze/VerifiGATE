@@ -74,7 +74,10 @@ export type PrintReport = {
     cards: { present: number; late: number };
     chart: { legend: string; series: ChartPoint[]; total: number };
     violators: {
-        rows: (Pick<RecordRow, 'id' | 'name' | 'student_number' | 'present' | 'late'> & { violations: number })[];
+        rows: (Pick<
+            RecordRow,
+            'id' | 'name' | 'student_number' | 'present' | 'late'
+        > & { violations: number })[];
         with_violations: number;
         limit: number;
     };

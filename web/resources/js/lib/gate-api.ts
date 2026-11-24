@@ -87,7 +87,7 @@ export async function api<T>(url: string, init: RequestInit = {}): Promise<T> {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             'X-XSRF-TOKEN': xsrfToken(),
-            ...((init.headers as Record<string, string> | undefined) ?? {}),
+            ...(init.headers as Record<string, string> | undefined),
         },
     });
 

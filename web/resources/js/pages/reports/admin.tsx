@@ -1,5 +1,4 @@
-import { Head, router, usePoll } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, usePoll } from '@inertiajs/react';
 import { GREEN, INK, ORANGE, RED } from '@/components/reports/colors';
 import EventStatusCard from '@/components/reports/event-status-card';
 import ExportButton from '@/components/reports/export-button';
@@ -8,15 +7,12 @@ import ModeToggle from '@/components/reports/mode-toggle';
 import OccupancyCard from '@/components/reports/occupancy-card';
 import PeriodSelect from '@/components/reports/period-select';
 import RecordListCard from '@/components/reports/record-list-card';
+import ReportStatus from '@/components/reports/report-status';
 import StatCard from '@/components/reports/stat-card';
 import UniformExceptionsCard from '@/components/reports/uniform-exceptions-card';
 import ViewAsSwitch from '@/components/reports/view-as-switch';
-import type {
-    AdminDashboardData,
-    AttendanceMode,
-    Occupancy,
-    PeriodKey,
-} from '@/types/reports';
+import { useReportVisit } from '@/hooks/use-report-visit';
+import type { AdminDashboardData, Occupancy } from '@/types/reports';
 
 type Props = {
     dashboard: AdminDashboardData;
@@ -29,29 +25,14 @@ export default function AdminDashboard({
     occupancy,
     testControls,
 }: Props) {
-    const [loading, setLoading] = useState(false);
     const { period, cards, chart, records, extras, event, exceptions } =
         dashboard;
+    const { loading, failed, visit } = useReportVisit('/dashboard/admin', {
+        period: period.key,
+        mode: dashboard.mode,
+    });
 
     usePoll(30000, { only: ['occupancy'] });
-
-    function visit(next: { period?: PeriodKey; mode?: AttendanceMode }) {
-        router.get(
-            '/dashboard/admin',
-            {
-                period: next.period ?? period.key,
-                mode: next.mode ?? dashboard.mode,
-            },
-            {
-                only: ['dashboard'],
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-                onStart: () => setLoading(true),
-                onFinish: () => setLoading(false),
-            },
-        );
-    }
 
     return (
         <>
@@ -83,6 +64,8 @@ export default function AdminDashboard({
                     />
                 </div>
             </div>
+
+            <ReportStatus loading={loading} failed={failed} />
 
             <div
                 className="mt-6 space-y-6 transition-opacity"
@@ -156,7 +139,9 @@ export default function AdminDashboard({
                 </section>
 
                 <div className="flex justify-end">
-                    <ExportButton href={`/dashboard/admin/print?period=${period.key}&mode=${dashboard.mode}`} />
+                    <ExportButton
+                        href={`/dashboard/admin/print?period=${period.key}&mode=${dashboard.mode}`}
+                    />
                 </div>
 
                 <hr className="border-neutral-300" />

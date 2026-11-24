@@ -30,7 +30,7 @@ export function usePoll<T>(url: string, interval = 500) {
             if (alive) timer = window.setTimeout(tick, interval);
         };
 
-        tick();
+        void tick();
 
         return () => {
             alive = false;

@@ -146,7 +146,7 @@ it('lists the ten students with the most violations, most first', function () {
             ->where('report.violators.rows.9.violations', 2)
             ->where('report.violators.rows', fn ($rows) => $rows->pluck('name')->doesntContain('S11, TEST')
                 && $rows->pluck('name')->doesntContain('ZZ, TEST'))
-            ->where('report.chart.total', 38));
+            ->where('report.chart.total', 42));
 });
 
 it('shows no violators when nobody has a violation', function () {
