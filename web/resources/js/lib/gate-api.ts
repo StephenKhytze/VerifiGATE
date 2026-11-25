@@ -43,6 +43,7 @@ export type GuardState = {
     pending_count: number;
     important: LogCard[];
     recent: LogCard[];
+    attendance: { mode: 'on_time' | 'late'; toggle: boolean };
 };
 
 export type ScreenState = {

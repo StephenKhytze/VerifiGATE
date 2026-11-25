@@ -18,5 +18,6 @@ Route::get('events/{event}/id-image', IdImageController::class);
 Route::get('events/{event}/history', [GateStateController::class, 'history']);
 Route::get('people/search', [GuardActionsController::class, 'search']);
 Route::post('events/manual', [GuardActionsController::class, 'manual']);
+Route::post('attendance-mode', [GuardActionsController::class, 'attendanceMode']);
 Route::post('events/{event}/identify', [GuardActionsController::class, 'identify']);
 Route::post('events/{event}/decision', GuardDecisionController::class)->name('gate.events.decision');

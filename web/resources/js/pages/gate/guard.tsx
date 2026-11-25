@@ -6,6 +6,7 @@ import LogCardView from '@/components/gate/log-card';
 import SearchPanel from '@/components/gate/search-panel';
 import { usePoll } from '@/hooks/use-poll';
 import { api, ApiError, type GuardCard, type GuardState } from '@/lib/gate-api';
+import AttendanceToggle from '@/components/gate/attendance-toggle';
 
 const GREEN = '#2B8132';
 const ORANGE = '#FF9831';
@@ -274,16 +275,21 @@ export default function GateGuard() {
             <main className="flex-1 overflow-y-auto p-8">
                 <div className="flex items-center justify-between">
                     <Logo />
-                    <button
-                        type="button"
-                        onClick={() => setSearching(true)}
-                        className="flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-lg"
-                    >
-                        <Search className="h-5 w-5" />
-                        {current?.needs_decision
-                            ? 'Search'
-                            : 'Lost ID / manual entry'}
-                    </button>
+                    <div className="flex items-center gap-4">
+                        {data?.attendance.toggle && (
+                            <AttendanceToggle attendance={data.attendance} />
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setSearching(true)}
+                            className="flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-lg"
+                        >
+                            <Search className="h-5 w-5" />
+                            {current?.needs_decision
+                                ? 'Search'
+                                : 'Lost ID / manual entry'}
+                        </button>
+                    </div>
                 </div>
 
                 {error && (

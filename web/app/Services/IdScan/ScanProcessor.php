@@ -24,6 +24,7 @@ final class ScanProcessor
         private UniformProvider $uniform,
         private PresenceService $presence,
         private EntryNotifier $notifier,
+        private ScanAttendanceSetting $attendance,
     ) {
     }
 
@@ -94,6 +95,7 @@ final class ScanProcessor
                 'visitor_name' => ($id->type === PersonType::Visitor && !$personId) ? $id->visitorName : null,
                 'id_type' => $id->idType,
                 'verification_method' => VerificationMethod::OcrAuto,
+                'attendance_status' => $this->attendance->current(),
                 'decided_by' => $auto ? DecidedBy::System : null,
                 'decided_at' => $auto ? now() : null,
                 'scan_attempts' => $attempt,

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\SmsNotification;
+use App\Enums\Gate\AttendanceStatus;
 
 class GateEvent extends Model
 {
@@ -27,6 +28,7 @@ class GateEvent extends Model
             'decided_by' => DecidedBy::class,
             'verification_method' => VerificationMethod::class,
             'uniform_status' => UniformStatus::class,
+            'attendance_status' => AttendanceStatus::class,
             'scanned_at' => 'datetime',
             'decided_at' => 'datetime',
         ];

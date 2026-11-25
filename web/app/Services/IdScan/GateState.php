@@ -16,7 +16,7 @@ final class GateState
     private const STUDENT_PENDING_MINUTES = 2;
     private const SIGNAL_SECONDS = 15;
 
-    public function __construct(private GatePresenter $presenter)
+    public function __construct(private GatePresenter $presenter, private ScanAttendanceSetting $attendance)
     {
     }
 
@@ -42,6 +42,7 @@ final class GateState
             'recent' => GateEvent::with(GatePresenter::with())
                 ->latest('scanned_at')->limit(30)->get()
                 ->map(fn ($e) => $this->presenter->logCard($e))->values()->all(),
+            'attendance' => ['mode' => $this->attendance->current()->value, 'toggle' => $this->attendance->enabled()],
         ];
     }
 

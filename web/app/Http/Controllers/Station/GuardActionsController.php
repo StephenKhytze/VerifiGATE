@@ -19,6 +19,8 @@ use App\Services\IdScan\ScanProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Enums\Gate\AttendanceStatus;
+use App\Services\IdScan\ScanAttendanceSetting;
 
 class GuardActionsController extends Controller
 {
@@ -49,15 +51,16 @@ class GuardActionsController extends Controller
     }
 
     /** Start an entry by hand (lost ID, registration card). Identify the person next. */
-    public function manual(Request $request): JsonResponse
+    public function manual(Request $request, ScanAttendanceSetting $attendance): JsonResponse
     {
-        $event = DB::transaction(function () use ($request) {
+        $event = DB::transaction(function () use ($request, $attendance) {
             $e = GateEvent::create([
                 'school_year_id' => SchoolYear::where('is_current', true)->firstOrFail()->id,
                 'direction' => Direction::In,
                 'person_type' => PersonType::Unknown,
                 'status' => GateStatus::Pending,
                 'verification_method' => VerificationMethod::RegistrationCard,
+                'attendance_status' => $attendance->current(),
                 'guard_user_id' => $request->user()->id,
                 'scan_attempts' => 0,
                 'scanned_at' => now(),
@@ -68,6 +71,19 @@ class GuardActionsController extends Controller
         });
 
         return response()->json(['event_id' => $event->id]);
+    }
+
+    /** TEMPORARY: switch how new entries are stamped. Not available in production. */
+    public function attendanceMode(Request $request, ScanAttendanceSetting $setting): JsonResponse
+    {
+        abort_unless($setting->enabled(), 404);
+
+        $status = AttendanceStatus::from(
+            $request->validate(['status' => ['required', 'in:on_time,late']])['status']
+    );
+        $setting->set($status);
+
+        return response()->json(['attendance_mode' => $status->value]);
     }
 
     /** The guard says who this is. Uniform and already-inside checks run again. */
