@@ -7,7 +7,7 @@
 | Laravel | http://127.0.0.1:8000 | `php artisan serve` (or `composer run dev`) |
 | Vite (frontend) | started by `composer run dev` | `composer run dev` |
 | OCR service (FastAPI, Python 3.12) | http://127.0.0.1:8001 | `uvicorn app.main:app --host 127.0.0.1 --port 8001 --workers 1` in `python/services/id-ocr` |
-| Capture worker (Python) | none (crop server on 127.0.0.1:8003) | `python capture.py --debug` in `python/services/id-capture` |
+| Capture worker (Python) | none (crop server on 127.0.0.1:8003) | `python capture.py` in `python/services/id-capture` |
 
 All services run on the same PC and listen on `127.0.0.1` only.
 
@@ -79,7 +79,7 @@ Camera -> capture worker --POST /api/station/scans--> Laravel --POST /ocr--> OCR
 | Laravel `.env` | `OCR_URL`, `OCR_TOKEN`, `OCR_TIMEOUT` | OCR service address, shared token, timeout in seconds |
 | Laravel `.env` | `STATION_TOKEN` | Shared token for the capture worker |
 | Laravel `.env` | `CROP_URL` | Capture worker's crop server |
-| Laravel `.env` | `UNIFORM_MODE` | `unavailable` or `stub_compliant` until the uniform module exists |
+| Laravel `.env` | `UNIFORM_MODE` | `unavailable` or `stub_compliant` (if testing single-cam dev without Port 8002) |
 | OCR service shell | `OCR_TOKEN`, `OCR_DET_MODEL`, `OCR_REC_MODEL`, `OCR_CPU_THREADS` | Token, Paddle model names, thread count |
 | Capture worker shell | `STATION_TOKEN`, `LARAVEL_URL`, `CAMERA_INDEX`, `MIN_SHARPNESS` | Token, Laravel address, camera number, blur threshold |
 

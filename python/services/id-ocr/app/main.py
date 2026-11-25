@@ -18,8 +18,12 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("ocr")
 
 try:
+    from pathlib import Path
     from dotenv import load_dotenv
     load_dotenv()
+    web_env = Path(__file__).resolve().parents[4] / "web" / ".env"
+    if web_env.exists():
+        load_dotenv(web_env)
 except ImportError:
     pass
 
@@ -27,7 +31,7 @@ TOKEN = os.environ.get("OCR_TOKEN", "a9e7aa90f9de0a3d04c7e5b46d5923a7fe5ed65813f
 
 MAX_BYTES = 5 * 1024 * 1024
 MAX_SIDE = int(os.getenv("OCR_MAX_SIDE", "1280"))
-TRY_ROTATIONS = os.getenv("OCR_TRY_ROTATIONS", "1") == "1"
+TRY_ROTATIONS = os.getenv("OCR_TRY_ROTATIONS", "0") == "1"
 
 engine = None
 lock = threading.Lock()   # one OCR job at a time; thread-safety of the engine is unverified

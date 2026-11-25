@@ -1,9 +1,10 @@
-# import time
 import os
+from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
 import cv2
+import numpy as np
 import time
 import threading
 import asyncio
@@ -26,8 +27,12 @@ from contextlib import asynccontextmanager
 # secure access via token
 # ---
 
-# load token from .env file
+# load token from .env file (and web/.env if present)
 load_dotenv()
+web_env = Path(__file__).resolve().parents[3] / "web" / ".env"
+if web_env.exists():
+    load_dotenv(web_env)
+
 GATE_TOKEN = os.getenv("GATE_TOKEN") or os.getenv("VITE_GATE_TOKEN") or "a9e7aa90f9de0a3d04c7e5b46d5923a7fe5ed65813fa131d05a2a40d64511845"
 
 def verify_access(token: str = Query(None)):
@@ -158,6 +163,17 @@ def capture_camera():
       # if freeze frame exists, display it
       if freeze_frame is not None:
         display_frame = freeze_frame
+      elif cap is None or not cap.isOpened():
+        # Camera is not available (e.g. locked by capture.py on single webcam dev)
+        placeholder = np.zeros((720, 1280, 3), dtype=np.uint8)
+        cv2.putText(placeholder, "CAMERA UNAVAILABLE / IN USE BY ID SCANNER", (100, 300),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+        cv2.putText(placeholder, "Single webcam: set UNIFORM_MODE=stub_compliant in web/.env", (100, 360),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (220, 220, 220), 2)
+        cv2.putText(placeholder, "Or connect 2nd camera / DroidCam: set UNIF_CAMERA_INDEX=1", (100, 410),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (220, 220, 220), 2)
+        display_frame = placeholder
+        time.sleep(0.3)
       else:
         success, frame = cap.read()
         if not success:
@@ -324,6 +340,21 @@ async def lifespan(app: FastAPI):
   # start cam (configurable via UNIF_CAMERA_INDEX: supports camera index or video file path)
   cam_source = os.environ.get("UNIF_CAMERA_INDEX", "0")
   cap = cv2.VideoCapture(int(cam_source) if cam_source.isdigit() else cam_source)
+
+  if not cap.isOpened():
+    print(f"\n[UNIF. CHECKER WARNING] Could not open camera source '{cam_source}'.")
+    # If using default camera 0 and it failed (likely locked by capture.py), try camera 1
+    if cam_source == "0":
+      print("[UNIF. CHECKER] Trying fallback to camera index 1 (DroidCam/external)...")
+      cap_alt = cv2.VideoCapture(1)
+      if cap_alt.isOpened():
+        cap = cap_alt
+        print("[UNIF. CHECKER] Successfully connected to camera index 1!")
+      else:
+        cap_alt.release()
+        print("[UNIF. CHECKER] No alternative camera found. Streaming placeholder frame.")
+        print("[UNIF. CHECKER] Tip: If testing with 1 camera, set UNIFORM_MODE=stub_compliant in web/.env\n")
+
   cam_thread = threading.Thread(target=capture_camera, daemon=True)
   cam_thread.start()
   yield

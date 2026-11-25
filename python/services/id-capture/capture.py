@@ -11,8 +11,12 @@ import cv2
 import numpy as np
 import requests
 try:
+    from pathlib import Path
     from dotenv import load_dotenv
     load_dotenv()
+    web_env = Path(__file__).resolve().parents[3] / "web" / ".env"
+    if web_env.exists():
+        load_dotenv(web_env)
 except ImportError:
     pass
 
@@ -224,7 +228,10 @@ def main(debug):
     cam_index = CAM
     cap = open_camera(cam_index)
     if cap is None:
-        sys.exit("Camera not available. Check CAMERA_INDEX.")
+        sys.exit(
+            f"\n[ERROR] Camera {cam_index} not available or could not be opened.\n"
+            f"If uniform_checker_module or another application is using it, please stop it or set CAMERA_INDEX to another camera.\n"
+        )
     print(f"camera {cam_index} running at {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
 
     start_crop_server()
@@ -357,5 +364,6 @@ def main(debug):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--debug", action="store_true", help="show a preview window")
+    p.add_argument("--no-preview", dest="debug", action="store_false", default=True, help="run headlessly without preview window")
+    p.add_argument("--debug", dest="debug", action="store_true", help="show preview window (enabled by default)")
     main(p.parse_args().debug)

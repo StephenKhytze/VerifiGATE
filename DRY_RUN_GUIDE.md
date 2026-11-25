@@ -54,11 +54,13 @@ Because Windows does not allow two processes to open camera index `0` at the sam
    * Phone webcam = Camera Index `1` (used for Uniform checking).
 4. Launch the services:
    ```bash
-   # Terminal for ID Capture (defaults to index 0)
-   python capture.py --debug
+   # Terminal for ID Capture (defaults to index 0, preview window opens automatically)
+   python capture.py
 
-   # Terminal for Uniform Checker (set to index 1)
+   # Terminal for Uniform Checker (set to index 1 or direct phone Wi-Fi URL)
    set UNIF_CAMERA_INDEX=1
+   # Or for direct DroidCam Wi-Fi stream:
+   # set UNIF_CAMERA_INDEX=http://192.168.1.X:4747/video
    uvicorn uniform_checker_module:app --host 127.0.0.1 --port 8002
    ```
 
@@ -89,6 +91,8 @@ All services are pre-configured with default development tokens matching `web/.e
 | `VITE_GATE_TOKEN` / `GATE_TOKEN` | `a9e7aa90f9de0a3d04c7e5b46d5923a7fe5ed65813fa131d05a2a40d64511845` | React screen, Uniform Checker (8002), Laravel |
 | `STATION_TOKEN` | `35a3ac2aa19d749dba6489e3a22ec9e7a6a012a0f1ef4c6913b7d7646fa2dbf0` | ID Capture (8003) & Laravel Station API |
 | `OCR_TOKEN` | `a9e7aa90f9de0a3d04c7e5b46d5923a7fe5ed65813fa131d05a2a40d64511845` | OCR Service (8001) & Laravel |
+| `OCR_TIMEOUT` | `15` | Laravel OCR client timeout in seconds |
+| `CROP_URL` | `http://127.0.0.1:8003` | ID Capture crop streaming endpoint |
 
 *(If you generate custom tokens, ensure they are placed in `web/.env` and the corresponding service `.env` files).*
 
@@ -96,14 +100,15 @@ All services are pre-configured with default development tokens matching `web/.e
 
 ## 4. Database Setup
 
-Ensure the database schema includes Stephen's new `sex` column and test students:
+Ensure the database schema includes the `sex` column and test students:
 
 ```bash
 cd web
 php artisan migrate
+php artisan db:seed --class=GateDemoSeeder
 ```
 
-*(Optional: If you want to populate sample student data, import `databases_backup.sql` into your database).*
+*(Populates sample students including `H24-9001`, `H24-0137`, `H24-9002`, `H24-9003`, `C24-9001`, `C23-0270` with valid sexes and sections).*
 
 ---
 
@@ -135,8 +140,9 @@ uvicorn uniform_checker_module:app --host 127.0.0.1 --port 8002
 ### Terminal 4: ID Capture Worker
 ```bash
 cd python/services/id-capture
-python capture.py --debug
+python capture.py
 ```
+*(A preview window opens automatically showing the camera feed and detection zone).*
 
 ---
 

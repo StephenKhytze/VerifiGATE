@@ -59,3 +59,17 @@ This document records the modifications made to bridge and integrate the branche
 
 ### `python/services/id-ocr/app/main.py`
 * Added `load_dotenv()` import and fallback for `OCR_TOKEN` (`a9e7aa90f9de0a3d04c7e5b46d5923a7fe5ed65813fa131d05a2a40d64511845`).
+
+---
+
+## 3. Reliability & Hardware Conflict Fixes
+
+| Area | Problem | Resolution |
+| :--- | :--- | :--- |
+| **OCR Timeout** | PaddleOCR on CPU takes 4–8s, exceeding Laravel's previous 3s default (`OCR_TIMEOUT=3`), triggering timeouts and unreadable/retry scans. | Increased default `OCR_TIMEOUT` to 15s in `config/verifigate.php` and `web/.env.example`. |
+| **OCR Processing Speed** | `id-ocr` tested 3 rotations (0°, 90°, 270°) by default, taking 3x longer. | Defaulted `OCR_TRY_ROTATIONS` to `0` in `main.py`, cutting OCR execution time down to ~1.5–2s per scan. |
+| **Single-Webcam Collision** | On Windows, both `capture.py` and `uniform_checker_module.py` attempted to lock Camera `0`. The second process failed silently, leaving `/gate/screen` black. | Added automatic fallback to Camera `1` in `uniform_checker_module.py`. If no camera is available, it streams an on-screen visual placeholder guiding the user. |
+| **ID Capture Preview** | `capture.py` ran headlessly unless `--debug` was explicitly passed. | Enabled preview window by default (`--no-preview` now available for headless mode). Added clear camera-busy diagnostics. |
+| **MySQL Credentials** | `db_utils.py` hardcoded `user="root"` and `password=""`, failing on machines where MySQL has a password. | Updated `db_utils.py` to dynamically load credentials (`DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`) from environment and `web/.env`. |
+| **Database Seed Alignment** | `GateDemoSeeder.php` was missing test ID `H24-9001` and did not populate the `sex` column. | Added `H24-9001` and explicit `sex` (`male`/`female`) attributes for all seeded students. |
+
