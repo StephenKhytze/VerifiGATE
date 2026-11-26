@@ -10,9 +10,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import cv2
 import numpy as np
 import requests
+try:
+    from pathlib import Path
+    from dotenv import load_dotenv
+    load_dotenv()
+    web_env = Path(__file__).resolve().parents[3] / "web" / ".env"
+    if web_env.exists():
+        load_dotenv(web_env)
+except ImportError:
+    pass
 
 LARAVEL = os.environ.get("LARAVEL_URL", "http://127.0.0.1:8000")
-TOKEN = os.environ["STATION_TOKEN"]
+TOKEN = os.environ.get("STATION_TOKEN", "35a3ac2aa19d749dba6489e3a22ec9e7a6a012a0f1ef4c6913b7d7646fa2dbf0")
 CAM = int(os.environ.get("CAMERA_INDEX", "0"))
 CAM_W = int(os.environ.get("CAM_W", "1280"))
 CAM_H = int(os.environ.get("CAM_H", "720"))
@@ -208,7 +217,10 @@ def submit(crop, attempt):
         print(f"[{time.strftime('%H:%M:%S')}] attempt {attempt} -> {body.get('result')}")   # never print card contents
         return body.get("result")
     except requests.RequestException as e:
-        print(f"[{time.strftime('%H:%M:%S')}] send failed: {e.__class__.__name__}")
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        text = getattr(getattr(e, "response", None), "text", "")
+        extra = f" (Status {status}: {text[:120]})" if status else ""
+        print(f"[{time.strftime('%H:%M:%S')}] send failed: {e.__class__.__name__}{extra}")
         return None
 
 
@@ -216,7 +228,10 @@ def main(debug):
     cam_index = CAM
     cap = open_camera(cam_index)
     if cap is None:
-        sys.exit("Camera not available. Check CAMERA_INDEX.")
+        sys.exit(
+            f"\n[ERROR] Camera {cam_index} not available or could not be opened.\n"
+            f"If uniform_checker_module or another application is using it, please stop it or set CAMERA_INDEX to another camera.\n"
+        )
     print(f"camera {cam_index} running at {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
 
     start_crop_server()
@@ -349,5 +364,6 @@ def main(debug):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--debug", action="store_true", help="show a preview window")
+    p.add_argument("--no-preview", dest="debug", action="store_false", default=True, help="run headlessly without preview window")
+    p.add_argument("--debug", dest="debug", action="store_true", help="show preview window (enabled by default)")
     main(p.parse_args().debug)

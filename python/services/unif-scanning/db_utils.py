@@ -1,15 +1,31 @@
-import mysql.connector
+import os
 from datetime import date
+from pathlib import Path
+import mysql.connector
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    # Also load from web/.env if present
+    web_env = Path(__file__).resolve().parents[3] / "web" / ".env"
+    if web_env.exists():
+        load_dotenv(web_env)
+except ImportError:
+    pass
+
+def get_db_connection():
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST", "127.0.0.1"),
+        port=int(os.getenv("DB_PORT", "3306")),
+        user=os.getenv("DB_USERNAME", os.getenv("DB_USER", "root")),
+        password=os.getenv("DB_PASSWORD", ""),
+        database=os.getenv("DB_DATABASE", "verifigate")
+    )
 
 def get_student_attire_condition(student_number):
   try:
     #connect to database
-    conn = mysql.connector.connect(
-      host="127.0.0.1",
-      user="root",
-      password="",
-      database="verifigate"
-    )
+    conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     #get today's date
@@ -41,7 +57,8 @@ def get_student_attire_condition(student_number):
       print(f"Active exemption found: {exemption['exemption_name']}")
       return exemption["exemption_name"]
     else:
-      return f"Standard_{student["sex"]}"
+      sex = str(student.get("sex") or "male").upper()
+      return f"Standard_{sex}"
 
   except mysql.connector.Error as err:
     print(f"Database error: {err}")

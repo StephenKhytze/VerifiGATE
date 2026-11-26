@@ -4,7 +4,7 @@ return [
     'ocr' => [
         'url' => env('OCR_URL'),
         'token' => env('OCR_TOKEN'),
-        'timeout' => (float) env('OCR_TIMEOUT', 3),
+        'timeout' => (float) env('OCR_TIMEOUT', 15),
     ],
 
     'station_token' => env('STATION_TOKEN'),
